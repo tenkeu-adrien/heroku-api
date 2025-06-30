@@ -80,29 +80,28 @@ export default class UsersController {
 
 
 
-  public async store({ request, response }: HttpContextContract) {
-    const userSchema = schema.create({
-      email: schema.string([rules.email(), rules.unique({ table: 'users', column: 'email' })]),
-      phone: schema.string([rules.unique({ table: 'users', column: 'phone' })]),
-      password: schema.string([rules.minLength(8)]),
-      role: schema.enum(['client', 'driver', 'deliverer', 'admin'] as const),
-        vehicule_type: schema.string.nullableAndOptional(),
-  matricule: schema.string.nullableAndOptional()
-    })
+  // public async store({ request, response }: HttpContextContract) {
+  //   const userSchema = schema.create({
+  //     phone: schema.string([rules.unique({ table: 'users', column: 'phone' })]),
+  //     password: schema.string([rules.minLength(8)]),
+  //     role: schema.enum(['client', 'driver', 'deliverer', 'admin'] as const),
+  //       vehicule_type: schema.string.nullableAndOptional(),
+  // matricule: schema.string.nullableAndOptional()
+  //   })
 
 
 
-    const data = await request.validate({ schema: userSchema })
-    const user = await User.create(data)
-      let    paginateUser = response.created(user) 
-      // const io = use('Socket')
+  //   const data = await request.validate({ schema: userSchema })
+  //   const user = await User.create(data)
+  //     let    paginateUser = response.created(user) 
+  //     // const io = use('Socket')
       
-      // io.emit('user:new', {
-      //   userId: user.id,
-      //   role: user.role
-      // })
-   return   response.send({success:true , paginateUser  ,message:"user created succefully"})
-  }
+  //     // io.emit('user:new', {
+  //     //   userId: user.id,
+  //     //   role: user.role
+  //     // })
+  //  return   response.send({success:true , paginateUser  ,message:"user created succefully"})
+  // }
 
   public async show({ params ,response }: HttpContextContract) {
      let user = await User.findOrFail(params.id)

@@ -7,5 +7,5 @@ export enum Roles {
 
   export enum Vehiclee{
     MOTO = 'moto-taxi' ,
-    TRYy ="trycycle"
+    TRICYCLE ="tricycle"
   }

@@ -2,7 +2,6 @@ import { Vehiclee } from './../../app/Enums/Roles';
 import User from 'App/Models/User'
 import Factory from '@ioc:Adonis/Lucid/Factory'
 import { Roles } from 'App/Enums/Roles'
-import { ProfileFactory } from './ProfileFactory'
 
 export const UserFactory = Factory
   .define(User, ({ faker }) => {
@@ -14,13 +13,12 @@ export const UserFactory = Factory
       firstName: faker.internet.userName(),
       phone: faker.phone.number(), 
       password: 'password123!',
-      matricule: isDriver ? generateMatricule(faker) : null, // Génère seulement pour les drivers
+      matricule: isDriver ? generateMatricule(faker) : undefined, // Génère seulement pour les drivers
       role: role,
       isVerified: faker.datatype.boolean(),
-      vehiculeType: isDriver ? faker.helpers.arrayElement(Object.values(Vehiclee)) : null,
+      vehiculeType: isDriver ? faker.helpers.arrayElement(Object.values(Vehiclee)) : undefined,
     }
   })
-  .relation('profile', () => ProfileFactory)
   .build()
 
 // Fonction helper pour générer un matricule réaliste
