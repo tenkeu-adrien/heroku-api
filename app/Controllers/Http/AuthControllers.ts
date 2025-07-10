@@ -39,7 +39,6 @@ public async register({ request, response, auth }: HttpContextContract) {
   // Valider le payload
   const payload = await request.validate({ schema: this.registerSchema })
 
-  console.log("")
 
   try {
     // Création de l'utilisateur avec les URLs des fichiers

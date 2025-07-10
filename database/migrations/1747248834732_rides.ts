@@ -16,7 +16,16 @@ table.enum('status', ['pending', 'accepted', 'in_progress', 'completed', 'cancel
 table.timestamp('scheduled_at').nullable() // Pour les courses programmées
       table.timestamp('started_at').nullable()
       table.timestamp('completed_at').nullable()
-      table.float('price')  
+
+      // Dans votre migration existante, ajoutez ces champs :
+table.float('driver_latitude').nullable()
+table.float('driver_longitude').nullable()
+table.timestamp('last_position_update').nullable()
+table.json('route_coordinates').nullable()
+table.json('driver_to_pickup_route').nullable()
+table.string('current_driver_token').nullable() // Pour les notifications push
+table.string('current_client_token').nullable()
+table.float('price')  
 table.enum('payment_method', ['cash', 'orange_money', 'mobile_money']).nullable()
 table.text('recipient_info').nullable()
 table.boolean('is_paid').defaultTo(false)

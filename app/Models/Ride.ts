@@ -10,15 +10,15 @@ export default class Ride extends BaseModel {
 
   @column()
   public clientId: number
-                                   
+
   @column()
   public driverId: number
 
   @column()
-public rating?: number
+  public rating?: number
 
-@column()
-public ratingComment?: string
+  @column()
+  public ratingComment?: string
 
   @column()
   public vehicleType: 'moto-taxi' | 'tricycle'
@@ -48,16 +48,38 @@ public ratingComment?: string
   public endedAt?: DateTime
 
   @column()
-  public status:  string| 'pending'|'accepted'|'in_progress'|'completed'|'cancelled'
+  public status: string | 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled'
 
   @column.dateTime({ autoCreate: false })
   public startedAt: DateTime | null
 
-    @column.dateTime({ autoCreate: false })
+  @column.dateTime({ autoCreate: false })
   public scheduledAt: DateTime | null
 
   @column.dateTime({ autoCreate: false })
   public completedAt: DateTime | null
+
+  // Nouveaux champs ajoutés
+  @column()
+  public driverLatitude?: number | null
+
+  @column()
+  public driverLongitude?: number | null
+
+  @column.dateTime()
+  public lastPositionUpdate?: DateTime | null
+
+  @column()
+  public routeCoordinates?: any | null // Type JSON
+
+  @column()
+  public driverToPickupRoute?: any | null // Type JSON
+
+  @column()
+  public currentDriverToken?: string | null // Pour les notifications push
+
+  @column()
+  public currentClientToken?: string | null // Pour les notifications push
 
   @belongsTo(() => User, { foreignKey: 'clientId' })
   public client: BelongsTo<typeof User>
@@ -65,7 +87,7 @@ public ratingComment?: string
   @belongsTo(() => User, { foreignKey: 'driverId' })
   public driver: BelongsTo<typeof User>
 
- @column()
+  @column()
   public isPaid: boolean
 
   @hasOne(() => Review)

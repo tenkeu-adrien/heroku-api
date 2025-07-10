@@ -1,7 +1,8 @@
 // app/Enums/RideStatuses.ts
 export enum RideStatuses {
     COMPLETED = 'completed',
-    // CANCELLED = 'cancelled'
+    CANCELLED = 'pending'
+    
   }
 
 

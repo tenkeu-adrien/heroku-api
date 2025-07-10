@@ -45,13 +45,14 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   Route.get('/users/show/:id', 'UsersController.show')
   Route.patch('/users/delete/:id', 'UsersController.destroy')
   Route.patch('/users/update/:id', 'UsersController.updated')
-  Route.post('/users/:id/promo-codes', 'UsersController.promo')
+  Route.post('/users/:user_id/promo-codes', 'UsersController.promo')
   Route.post('/users/:id/fcm-token', 'UsersController.updateFcmToken')
   Route.get('/ratings/me', 'RatingsController.getUserRatings').middleware('auth')
   Route.post('/users/check-active-promos', 'UsersController.checkActivePromos')
   Route.get('/drivers/available', 'UsersController.availableDrivers')
   Route.get('/users/export', 'UsersController.export')
-    
+  Route.get('user/:user_id/transactions', 'TransactionsController.getUserTransactions')
+  Route.get('drivers/:id/stats', 'StatsController.index')
     // Récupérer la promo active d'un utilisateur spécifique
     Route.get('/:userId/active-promo', 'UsersController.getActivePromo')
   Route.post('/refresh', 'AuthControllers.refresh').middleware('auth')
@@ -73,17 +74,26 @@ Route.group(() => {
   // Client routes
   Route.group(() => {
     // Courses
-    Route.post('/rides', 'RidesController.store')
-        Route.get('/rides', 'RidesController.get')
+    Route.post('/rides', 'RidesController.store').middleware('auth')
+        Route.get('/rides', 'RidesController.indexx')
     Route.get('/rides/history', 'RidesController.index')
-    Route.patch('/rides/:id/cancel', 'RidesController.cancelRide')
+    Route.get('/ridess/', 'RidesController.indexx').middleware('auth')
+    Route.patch('/rides/:id/cancel', 'RidesController.cancelRide').middleware('auth')
     Route.get('/rides/:id/stats', 'RidesController.getRideById')
     Route.get('/rides/user/:id', 'RidesController.show')
-    Route.patch('/rides/:id/status', 'RidesController.updateStatus')
+    Route.patch('/rides/:id/status', 'RidesController.updateStatus').middleware("auth")
     Route.get('/rides/:rideId/messages', 'MessagesController.getRideMessages')
     Route.patch('/rides/:rideId/messages/read', 'MessagesController.markMessagesAsRead')
     Route.get('/rides/export', 'RidesController.export')
 
+    //  Route.patch('/rides/:id/status', 'RideController.updateStatus').middleware('auth')
+  Route.patch('/rides/:id/position', 'RidesController.updatePosition').middleware('auth')
+
+
+Route.post('/drivers/available-notify', 'RidesController.notifyAvailableDrivers')
+
+// start/routes.ts
+Route.post('/notifications/token', 'UsersController.store').middleware('auth');
 
     Route.get('/rides/revenue-stats', 'RidesController.revenueStats');
 Route.get('/rides/payment-distribution', 'RidesController.paymentDistribution');
@@ -143,10 +153,7 @@ Route.patch('/driver-payouts/:id/status', 'DriverPayoutsController.updateStatus'
 
 Route.group(() => {
   // Transactions paginées
-  Route.get('user/:user_id/transactions', 'TransactionsController.getUserTransactions')
-  
-  // Statistiques driver
-  Route.get('drivers/:id/stats', 'StatsController.index')
+
 })
 
 

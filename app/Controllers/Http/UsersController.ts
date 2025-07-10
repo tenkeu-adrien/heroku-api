@@ -7,6 +7,7 @@ import Ride from 'App/Models/Ride'
 import PromoCode from 'App/Models/PromoCode'
 import { DateTime } from 'luxon'
 import ExcelJS from 'exceljs'
+import PushToken from 'App/Models/PushToken'
 
 export default class UsersController {
   public async index({ request, response }: HttpContextContract) {
@@ -15,21 +16,35 @@ export default class UsersController {
     const searchTerm = request.input('search', '')
     const roleFilter = request.input('role', 'all')
     const regionFilter = request.input('region', 'all')
-
+  
+    // Construction de la requête de base avec les relations
     let query = User.query()
       .select('users.*')
-      .select([
-        Database.raw('(SELECT COUNT(*) FROM rides WHERE rides.client_id = users.id) as client_rides_count'),
-        Database.raw('(SELECT COUNT(*) FROM rides WHERE rides.driver_id = users.id) as driver_rides_count'),
-        Database.raw('(SELECT COALESCE(SUM(distance), 0) FROM rides WHERE rides.client_id = users.id) as client_distance_total'),
-        Database.raw('(SELECT COALESCE(SUM(distance), 0) FROM rides WHERE rides.driver_id = users.id) as driver_distance_total'),
-        Database.raw('(SELECT COALESCE(SUM(duration), 0) FROM rides WHERE rides.client_id = users.id) as client_duration_total'),
-        Database.raw('(SELECT COALESCE(SUM(duration), 0) FROM rides WHERE rides.driver_id = users.id) as driver_duration_total')
-      ])
-
-
-      query.orderBy('created_at', 'desc')
-    // Appliquer les filtres
+      .withCount('clientRides', (query) => {
+        query.as('client_rides_count')
+      })
+      .withCount('driverRides', (query) => {
+        query.as('driver_rides_count')
+      })
+      .withAggregate('clientRides', (query) => {
+        query.sum('distance').as('client_distance_total')
+      })
+      .withAggregate('driverRides', (query) => {
+        query.sum('distance').as('driver_distance_total')
+      })
+      .withAggregate('clientRides', (query) => {
+        query.sum('duration').as('client_duration_total')
+      })
+      .withAggregate('driverRides', (query) => {
+        query.sum('duration').as('driver_duration_total')
+      })
+      .withAggregate('driverRides', (query) => {
+        query.sum('price').as('driver_revenue')
+          .where('status', 'completed')
+      })
+      .orderBy('created_at', 'desc')
+  
+    // Application des filtres
     if (searchTerm) {
       query.where((builder) => {
         builder
@@ -37,23 +52,26 @@ export default class UsersController {
           .orWhere('phone', 'like', `%${searchTerm}%`)
       })
     }
-
+  
     if (roleFilter !== 'all') {
       query.where('role', roleFilter)
     }
-
+  
     if (regionFilter !== 'all') {
-      // Supposons que vous ayez une colonne 'ville' ou similaire
       query.where('ville', regionFilter)
     }
+  
+    // Exécution de la requête paginée
     const users = await query.paginate(page, limit)
-
+  
+    // Formatage de la réponse (identique à la version précédente)
     return response.json({
       success: true,
       data: {
         meta: users.getMeta(),
         users: users.all().map(user => ({
           ...user.toJSON(),
+          revenue: Number(user.$extras.driver_revenue || 0),
           rides_stats: {
             count: {
               total: Number(user.$extras.client_rides_count) + Number(user.$extras.driver_rides_count),
@@ -209,6 +227,10 @@ export default class UsersController {
 
 
   public async promo({ request, params, response  }: HttpContextContract) {
+
+
+    console.log("userIds code apis" ,params.user_id)
+
     const validationSchema = schema.create({
       code: schema.string({ trim: true }, [
         rules.maxLength(20),
@@ -222,8 +244,9 @@ export default class UsersController {
 
     const data = await request.validate({ schema: validationSchema })
 
+
     const promoCode = await PromoCode.create({
-      userId: params.user_id || 10, 
+      userId: params.user_id , 
       ...data,
     })
 
@@ -270,7 +293,7 @@ export default class UsersController {
 async checkActivePromos({ request, response }) {
   const { userIds } = request.only(['userIds'])
 
-  console.log("userIds code apis" ,userIds)
+  // console.log("userIds code apis" ,userIds)
   const promos = await PromoCode.query()
     .whereIn('user_id', userIds)
     .where('is_active', true)
@@ -282,7 +305,7 @@ async checkActivePromos({ request, response }) {
     result[promo.userId] = promo.toJSON()
   })
   
-  console.log("resultat dans l'apis " ,result)
+  // console.log("resultat dans l'apis " ,result)
   return response.ok({ data: result })
 }
 
@@ -297,6 +320,21 @@ async getActivePromo({ params, response }) {
   
   return response.ok({ data: promo || null })
 }
+
+
+public async store({ auth, request }: HttpContextContract) {
+    const token = request.input('token');
+    const user = auth.user!;
+
+    await PushToken.updateOrCreate(
+      { userId: user.id },
+      { token }
+    );
+
+    return { success: true };
+  }
+
+
 
 
 
