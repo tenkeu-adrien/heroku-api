@@ -48,7 +48,7 @@ export default class User extends BaseModel {
   public password: string
 
   @column()
-  public role: 'client' | 'driver' | 'deliverer' | 'admin'
+  public role: 'client' | 'driver' | 'deliverer' | 'admin' | 'manager'
 
   @column()
   public isVerified: boolean

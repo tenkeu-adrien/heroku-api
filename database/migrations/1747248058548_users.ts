@@ -12,7 +12,7 @@ export default class extends BaseSchema {
       table.string('password').notNullable()
       table.string('vehicule_type').nullable()
       table.string('matricule').nullable()
-      table.enum('role', ['client', 'driver', 'deliverer', 'admin']).notNullable()
+      table.enum('role', ['client', 'driver', 'deliverer', 'admin', 'manager']).notNullable()
       table.boolean('is_verified').defaultTo(false)
       table.boolean('is_deleted').defaultTo(false)
       table.string("avatar").nullable()

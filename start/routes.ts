@@ -28,7 +28,7 @@ Route.get('/', async () => {
 
 
 Route.group(() => {
-  Route.post('/register/', 'AuthControllers.register')
+  Route.post('/register', 'AuthControllers.register')
   Route.post('/login/', 'AuthControllers.login')
   Route.post('/logout', 'AuthControllers.logout')
   Route.get('/me', 'AuthControllers.me')
@@ -63,10 +63,14 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
 
 Route.group(() => {
   Route.get('/messages', 'MessagesController.index')
-  Route.get('/messages/:ride_id', 'MessagesController.show')
+  Route.get('/messages/contacts', 'MessagesController.getContact')
   Route.post('/messages', 'MessagesController.store')
 
+  Route.get('/rides/:rideId/messages', 'MessagesController.indexx')
+  Route.post('/rides/:rideId/messages', 'MessagesController.storee')
+  Route.patch('/rides/:rideId/messages/read', 'MessagesController.markAsRead')
 }).prefix('api/v1').middleware(['auth'])
+
 
 Route.group(() => {
   // Authentification
@@ -74,16 +78,18 @@ Route.group(() => {
   // Client routes
   Route.group(() => {
     // Courses
+    Route.patch('/rides/:id/status', 'RidesController.updateStatus').middleware("auth")
     Route.post('/rides', 'RidesController.store').middleware('auth')
-        Route.get('/rides', 'RidesController.indexx')
+    Route.get('/rides', 'RidesController.indexx')
     Route.get('/rides/history', 'RidesController.index')
+    Route.get('/rides/historyy', 'RidesController.history')
     Route.get('/ridess/', 'RidesController.indexx').middleware('auth')
     Route.patch('/rides/:id/cancel', 'RidesController.cancelRide').middleware('auth')
     Route.get('/rides/:id/stats', 'RidesController.getRideById')
     Route.get('/rides/user/:id', 'RidesController.show')
-    Route.patch('/rides/:id/status', 'RidesController.updateStatus').middleware("auth")
-    Route.get('/rides/:rideId/messages', 'MessagesController.getRideMessages')
-    Route.patch('/rides/:rideId/messages/read', 'MessagesController.markMessagesAsRead')
+   
+    // Route.get('/rides/:rideId/messages', 'MessagesController.getRideMessages')
+    Route.put('/rides/:rideId/messages/read', 'MessagesController.markMessagesAsRead')
     Route.get('/rides/export', 'RidesController.export')
 
     //  Route.patch('/rides/:id/status', 'RideController.updateStatus').middleware('auth')
@@ -151,14 +157,6 @@ Route.patch('/driver-payouts/:id/status', 'DriverPayoutsController.updateStatus'
   })
 
 
-Route.group(() => {
-  // Transactions paginées
-
-})
-
-
-
-
   // .middleware(['auth', 'checkRole:client'])
   // Driver routes
   Route.group(() => {
@@ -194,7 +192,9 @@ Route.group(() => {
 
 Route.group(() => {
   Route.get('/dashboard/admin-stats', 'AdminDashboard.getDashboardStats')
+  Route.get('/dashboard/driver-performance', 'AdminDashboard.driverPerformance')
   Route.get('/dashboard/platform-stats', 'AdminDashboard.platformStats')
+  Route.get('/export', 'AdminDashboard.exportData')
   Route.get('/dashboard/ride-metrics', 'AdminDashboard.rideMetrics')
 })
   // .middleware(['auth', 'checkRole:admin'])

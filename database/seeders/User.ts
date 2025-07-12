@@ -17,7 +17,7 @@ export default class extends BaseSeeder {
   await Pricing.createMany([
     { 
       vehicle_id: 1,
-      base_price: 1500,
+      base_price: 20,
       price_per_km: 500,
       peak_hours_multiplier: 1.5,
       delivery_fee: 2000,
@@ -25,8 +25,8 @@ export default class extends BaseSeeder {
     },
     {
       vehicle_id: 2,
-      base_price: 1800,
-      price_per_km: 600,
+      base_price: 3000,
+      price_per_km: 500,
       peak_hours_multiplier: 1.8,
       delivery_fee: 2500,
       commission_rate: 12

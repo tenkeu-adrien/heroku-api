@@ -1,6 +1,7 @@
 import { BaseModel, column, belongsTo, BelongsTo } from '@ioc:Adonis/Lucid/Orm'
 import User from './User'
 import Ride from './Ride'
+import { DateTime } from 'luxon'
 
 export default class Message extends BaseModel {
   @column({ isPrimary: true })
@@ -29,4 +30,7 @@ public isRead: boolean
 
   @belongsTo(() => Ride)
   public ride: BelongsTo<typeof Ride>
+
+   @column.dateTime({ autoCreate: true })
+    public createdAt: DateTime
 }

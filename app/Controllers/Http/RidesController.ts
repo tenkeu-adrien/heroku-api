@@ -41,6 +41,84 @@ export default class RidesController {
     
   }
 
+  public async history({ request, response }: HttpContextContract) {
+    const page = request.input('page', 1)
+    const perPage = request.input('per_page', 8)
+    const search = request.input('search', '')
+    const status = request.input('status')
+    const paymentMethod = request.input('payment_method')
+    const vehicleType = request.input('vehicle_type')
+    const rideType = request.input('ride_type') // '1' pour livraison, '0' pour normal
+    const startDate = request.input('start_date')
+    const endDate = request.input('end_date')
+
+    const query = Ride.query()
+      .preload('client', (clientQuery) => {
+        clientQuery.select(['id', 'first_name', 'phone'])
+      })
+      .preload('driver', (driverQuery) => {
+        driverQuery.select(['id', 'first_name'])
+      })
+      .orderBy('created_at', 'desc')
+
+    // Filtre par statut
+    if (status) {
+      query.where('status', status)
+    }
+
+    // Filtre par méthode de paiement
+    if (paymentMethod) {
+      query.where('payment_method', paymentMethod)
+    }
+
+    // Filtre par type de véhicule
+    if (vehicleType) {
+      query.where('vehicle_type', vehicleType)
+    }
+
+    // Filtre par type de course (livraison ou normale)
+    if (rideType !== undefined) {
+      if (rideType === '1') {
+        query.whereNotNull('recipient')
+      } else {
+        query.whereNull('recipient')
+      }
+    }
+
+    // Filtre par période
+    if (startDate && endDate) {
+      query.whereBetween('created_at', [
+        DateTime.fromISO(startDate).toSQL(),
+        DateTime.fromISO(endDate).toSQL()
+      ])
+    }
+
+    // Recherche
+    if (search) {
+      query.where((builder) => {
+        builder
+          .where('id', 'like', `%${search}%`)
+          .orWhereHas('client', (clientBuilder) => {
+            clientBuilder
+              .where('first_name', 'like', `%${search}%`)
+              .orWhere('phone', 'like', `%${search}%`)
+          })
+          .orWhereHas('driver', (driverBuilder) => {
+            driverBuilder.where('first_name', 'like', `%${search}%`)
+          })
+          .orWhere('recipient', 'like', `%${search}%`)
+      })
+    }
+
+    const rides = await query.paginate(page, perPage)
+
+    return response.json({
+      message: 'Rides retrieved successfully',
+      rides
+    })
+  }
+
+
 
   
 public async indexx({ auth, request, response }: HttpContextContract) {
@@ -305,7 +383,8 @@ public async store({ request, response , auth}: HttpContextContract) {
         startedAt: DateTime.now(),
         driverLatitude: position?.latitude,
         driverLongitude: position?.longitude,
-        lastPositionUpdate: DateTime.now()
+        lastPositionUpdate: DateTime.now(),
+        updatedAt: DateTime.now()
       })
       break
 
@@ -353,7 +432,7 @@ public async store({ request, response , auth}: HttpContextContract) {
     // Récupération des infos complètes du chauffeur
     const driver = await User.query()
       .where('id', user.id)
-      .select(['id', 'first_name', 'phone', 'vehicule_type', 'averageRating'])
+      .select(['id', 'first_name', 'phone', 'vehicule_type'])
       .firstOrFail()
 
     // Envoi de notification
@@ -382,6 +461,7 @@ public async store({ request, response , auth}: HttpContextContract) {
       pickupLocation: ride.pickupLocation,
       destinationLocation: ride.destinationLocation
     })
+
   } else {
     // Émission standard pour les autres statuts
     Ws.io.to(`ride_${ride.id}`).emit('ride:status', {

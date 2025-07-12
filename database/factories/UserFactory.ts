@@ -11,7 +11,7 @@ export const UserFactory = Factory
     
     return {
       firstName: faker.internet.userName(),
-      phone: faker.phone.number(), 
+      phone: generateCameroonianPhoneNumber(faker), // Utilisation de notre nouvelle fonction
       password: 'password123!',
       matricule: isDriver ? generateMatricule(faker) : undefined, // Génère seulement pour les drivers
       role: role,
@@ -26,9 +26,13 @@ function generateMatricule(faker) {
   const letters = faker.random.alpha({ count: 2, upcase: true });
   const numbers = faker.random.numeric(5);
   return `${letters}${numbers}`;
-  
-  // Alternative avec date si préféré:
-  // const year = new Date().getFullYear().toString().slice(-2);
-  // const seq = faker.random.numeric(4);
-  // return `DRV-${year}-${seq}`;
+}
+
+// Fonction pour générer un numéro de téléphone camerounais valide (9 chiffres, commençant par 6)
+function generateCameroonianPhoneNumber(faker) {
+  // Commence toujours par 6 (pour Cameroun)
+  const prefix = '6';
+  // Génère 8 chiffres aléatoires
+  const suffix = faker.random.numeric(8);
+  return `${prefix}${suffix}`;
 }
