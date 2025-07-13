@@ -382,7 +382,7 @@ public async store({ request, response , auth}: HttpContextContract) {
         status: 'accepted',
         startedAt: DateTime.now(),
         driverLatitude: position?.latitude || undefined,
-        driverLongitude: position?.longitude || undefined,
+        driverLongitude: position?.longitude,
         lastPositionUpdate: DateTime.now(),
         updatedAt: DateTime.now()
       })
