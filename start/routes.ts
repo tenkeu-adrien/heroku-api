@@ -69,7 +69,7 @@ Route.group(() => {
   Route.get('/rides/:rideId/messages', 'MessagesController.indexx')
   Route.post('/rides/:rideId/messages', 'MessagesController.storee')
   Route.patch('/rides/:rideId/messages/read', 'MessagesController.markAsRead')
-}).prefix('api/v1').middleware(['auth'])
+}).prefix('/api/v1').middleware('auth')
 
 
 Route.group(() => {
@@ -113,11 +113,11 @@ Route.get('/rides/payment-distribution', 'RidesController.paymentDistribution');
   // .middleware('auth:api')
   // .middleware(['auth', 'deliveryMan'])
   // Admin routes
-  Route.group(() => {
-    // Route.get('/orders', 'OrdersController.index')
-    Route.get('/orders/:id/stats', 'OrdersController.getRideById')
-    Route.patch('/orders/:id/status', 'OrdersController.updateStatus')
-  })
+  // Route.group(() => {
+  //   // Route.get('/orders', 'OrdersController.index')
+  //   Route.get('/orders/:id/stats', 'OrdersController.getRideById')
+  //   Route.patch('/orders/:id/status', 'OrdersController.updateStatus')
+  // })
   // .middleware(['auth', 'admin'])
 
 

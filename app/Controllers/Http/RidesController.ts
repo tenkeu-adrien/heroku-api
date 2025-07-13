@@ -311,14 +311,15 @@ public async store({ request, response , auth}: HttpContextContract) {
 
  public async updatePosition({ request, response, params }: HttpContextContract) {
     const { id } = params
-    const { position } = request.only(['position'])
+ 
 
+    console.log("position" , request.body())
     const ride = await Ride.findOrFail(id)
     // console.log("ma position" ,position)
     // Mettre à jour la position
     ride.merge({
-      driverLatitude: position.latitude,
-      driverLongitude: position.longitude
+      driverLatitude: request.input("driver_latitude"),
+      driverLongitude: request.input("driver_longitude")
     })
 
     await ride.save()
@@ -327,7 +328,6 @@ public async store({ request, response , auth}: HttpContextContract) {
       const io = Ws.io
     io.to(`ride-${ride.id}-client`).emit('driver:position', {
       rideId: ride.id,
-      position
     })
 
     return response.noContent()
@@ -381,8 +381,8 @@ public async store({ request, response , auth}: HttpContextContract) {
         driverId: user.id,
         status: 'accepted',
         startedAt: DateTime.now(),
-        driverLatitude: position?.latitude,
-        driverLongitude: position?.longitude,
+        driverLatitude: position?.latitude || undefined,
+        driverLongitude: position?.longitude || undefined,
         lastPositionUpdate: DateTime.now(),
         updatedAt: DateTime.now()
       })

@@ -157,66 +157,78 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
     })
   }
 
-
   public async storee({ auth, params, request, response }: HttpContextContract) {
     const user = auth.user!
     const rideId = params.rideId
-    console.log("user " ,user)
     const content = request.input('content')
-console.log("content rideid user " ,user?.id ,content ,rideId)
-    // Vérifier l'accès à la conversation
-  const ride=   await Ride.query()
+
+    // Vérifier l'accès à la conversation et le statut
+    const ride = await Ride.query()
       .where('id', rideId)
+      .andWhere('status', 'accepted') // Ajout de la vérification du statut
       .andWhere(q => {
-        q.where('client_id', user?.id)
-         .orWhere('driver_id', user?.id)
+        q.where('client_id', user.id)
+         .orWhere('driver_id', user.id)
       })
-      .firstOrFail()
-console.log("ride dans store " ,ride)
+      .first()
+
+    if (!ride) {
+      return response.badRequest({
+        success: false,
+        message: 'Course non trouvée ou non acceptée'
+      })
+    }
+
+    // Vérification supplémentaire pour s'assurer qu'on a un receiverId valide
+    const receiverId = user.role === 'client' 
+      ? ride.driverId 
+      : ride.clientId
+
+    if (!receiverId) {
+      return response.badRequest({
+        success: false,
+        message: 'Destinataire non disponible'
+      })
+    }
+
     // Créer le message
     const message = await Message.create({
       rideId,
       senderId: user.id,
-      receiverId: user.role === 'client' 
-        ? (await Ride.findOrFail(rideId)).driverId 
-        : (await Ride.findOrFail(rideId)).clientId,
+      receiverId,
       content
     })
 
     // Diffuser via WebSocket
-     const io = Ws.io
-     const receiverId = user.role === 'client' 
-     ? (await Ride.findOrFail(rideId)).driverId 
-     : (await Ride.findOrFail(rideId)).clientId
+    const io = Ws.io
    
-   // Émettre uniquement au destinataire
-   io.to(`user_${receiverId}`).emit('new-message', {
-     id: message.id,
-     rideId,
-     senderId: user.id,
-     receiverId,
-     text: content,
-     time: message.createdAt.toLocaleString([], { hour: '2-digit', minute: '2-digit' }),
-     isRead: false,
-     createdAt: message.createdAt
-   })
+    // Émettre uniquement au destinataire
+    io.to(`user_${receiverId}`).emit('new-message', {
+      id: message.id,
+      rideId,
+      senderId: user.id,
+      receiverId,
+      text: content,
+      time: message.createdAt.toLocaleString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: false,
+      createdAt: message.createdAt
+    })
    
-   // Émettre aussi à l'expéditeur pour synchronisation (optionnel)
-   io.to(`user_${user.id}`).emit('new-message-sent', {
-     id: message.id,
-     rideId,
-     receiverId,
-     text: content,
-     time: message.createdAt.toLocaleString([], { hour: '2-digit', minute: '2-digit' }),
-     isRead: true // Marqué comme lu pour l'expéditeur
-   })
+    // Émettre aussi à l'expéditeur pour synchronisation (optionnel)
+    io.to(`user_${user.id}`).emit('new-message-sent', {
+      id: message.id,
+      rideId,
+      receiverId,
+      text: content,
+      time: message.createdAt.toLocaleString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: true
+    })
 
     return response.json({
       success: true,
       message: 'Message envoyé'
     })
-  }
-
+}
 
 
 
@@ -231,6 +243,7 @@ console.log("ride dans store " ,ride)
           q.where('client_id', user.id)
             .orWhere('driver_id', user.id)
         })
+        .where('status', 'accepted') // Ajout de la contrainte sur le statut
         .whereNotNull('driver_id') // Uniquement les courses avec chauffeur assigné
         .preload('client')
         .preload('driver')
@@ -289,5 +302,6 @@ console.log("ride dans store " ,ride)
       })
     }
   }
+
 
   }
