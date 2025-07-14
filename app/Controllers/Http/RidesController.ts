@@ -280,7 +280,8 @@ public async store({ request, response , auth}: HttpContextContract) {
       vehicle_type: ride.vehicleType ,
       duration:ride.duration || null,
       distance:ride.distance || null,
-      payment_method :ride.paymentMethod
+      payment_method :ride.paymentMethod,
+      created_at:ride.createdAt,
     })
 
 

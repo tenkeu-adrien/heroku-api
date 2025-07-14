@@ -2,7 +2,6 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import User from 'App/Models/User'
 import { schema, rules } from '@ioc:Adonis/Core/Validator'
-import Database from '@ioc:Adonis/Lucid/Database'
 import Ride from 'App/Models/Ride'
 import PromoCode from 'App/Models/PromoCode'
 import { DateTime } from 'luxon'
