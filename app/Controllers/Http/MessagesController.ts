@@ -93,8 +93,10 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
     const rideId = params.rideId
   
     // On vérifie que le user est bien impliqué dans la course
-    const ride = await Ride.findOrFail(rideId)
-  
+    const ride = await Ride.findBy('id', rideId)
+    if (!ride) {
+      return response.notFound({ message: 'Course non trouvée' })
+    }
     if (
       user.role !== 'admin' &&
       user.id !== ride.clientId &&
@@ -124,13 +126,13 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
     const limit = 20
 
     // Vérifier que l'utilisateur a accès à cette conversation
-    const ride = await Ride.query()
+     await Ride.query()
       .where('id', rideId)
       .andWhere(q => {
         q.where('client_id', user.id)
          .orWhere('driver_id', user.id)
       })
-      .firstOrFail()
+      .first
 
     // Récupérer les messages paginés
     const messages = await Database.from('messages')
@@ -161,15 +163,15 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
     const user = auth.user!
     const rideId = params.rideId
     const content = request.input('content')
-
+console.log("rideId",rideId)
     // Vérifier l'accès à la conversation et le statut
     const ride = await Ride.query()
       .where('id', rideId)
-      .andWhere('status', 'accepted') // Ajout de la vérification du statut
-      .andWhere(q => {
-        q.where('client_id', user.id)
-         .orWhere('driver_id', user.id)
-      })
+      .whereIn('status', ['accepted', 'in_progress' , 'completed']) // Ajout de la vérification du statut
+      // .andWhere(q => {
+      //   q.where('client_id', user.id)
+      //    .orWhere('driver_id', user.id)
+      // })
       .first()
 
     if (!ride) {
@@ -232,76 +234,108 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
 
 
 
+public async getContacts({ auth, response }: HttpContextContract) {
+  const user = auth.user!
+  const userId = user.id
 
-  public async getContact({ auth, response }: HttpContextContract) {
-    const user = auth.user!
+  try {
+    // 1. Récupérer tous les messages où l'utilisateur est impliqué
+    const messages = await Message.query()
+      .where('sender_id', userId)
+      .orWhere('receiver_id', userId)
+      .orderBy('created_at', 'desc')
 
-    try {
-      // Récupérer toutes les courses où l'utilisateur est impliqué
-      const rides = await Ride.query()
-        .where(q => {
-          q.where('client_id', user.id)
-            .orWhere('driver_id', user.id)
-        })
-        .where('status', 'accepted') // Ajout de la contrainte sur le statut
-        .whereNotNull('driver_id') // Uniquement les courses avec chauffeur assigné
+    // 2. Grouper par ride_id pour avoir les dernières conversations
+    const seenRideIds = new Set()
+    const contacts = []
+
+    // console.log("messages",messages)
+    for (const message of messages) {
+      if (seenRideIds.has(message.rideId)) continue
+      seenRideIds.add(message.rideId)
+
+      // Charger le ride avec les relations
+      const ride = await Ride.query()
+        .where('id', message.rideId)
         .preload('client')
         .preload('driver')
-        .orderBy('updated_at', 'desc')
+        .first()
 
-      // Pour chaque course, préparer les données du contact
-      const contacts = await Promise.all(
-        rides.map(async (ride) => {
-          // Déterminer qui est le contact (client ou chauffeur)
-          const contact = user.role === 'client' ? ride.driver : ride.client
-          
-          // Récupérer le dernier message
-          const lastMessage = await Message.query()
-            .where('ride_id', ride.id)
-            .orderBy('created_at', 'desc')
-            .first()
+      if (!ride) continue
 
-          // Compter les messages non lus
-          const unreadCount = await Message.query()
-            .where('ride_id', ride.id)
-            .where('receiver_id', user.id)
-            .where('is_read', false)
-            .count('* as total')
-            .first()
+      console.log("ride " ,ride)
+      // Déterminer le contact (l'autre utilisateur)
+      const contactId = message.senderId === userId ? message.receiverId : message.senderId
+      const contactUser = contactId === ride.clientId ? ride.client : ride.driver
 
-          return {
-            id: ride.id, // Utilise ride.id comme identifiant unique
-            contactId: contact.id,
-            name: contact.firstName || `${contact.firstName} ${contact.phone}`,
-            avatar: contact.avatar || 'https://i.pravatar.cc/150',
-            lastMessage: lastMessage?.content || 'Aucun message',
-            unreadCount: Number(unreadCount?.$extras.total) || 0,
-            rideId: ride.id
-          }
-        })
-      )
+      if (!contactUser) continue
 
-      // Si aucun contact, retourner un tableau vide avec un message
-      if (contacts.length === 0) {
-        return response.status(200).json({
-          success: true,
-          message: "Vous n'avez aucune conversation pour le moment",
-          contacts: []
-        })
-      }
+      // Compter les messages non lus
+      const unreadCount = await Message.query()
+        .where('ride_id', ride.id)
+        .where('receiver_id', userId)
+        .where('is_read', false)
+        .count('* as total')
+        .first()
 
-      return response.json({
-        success: true,
-        contacts
-      })
-
-    } catch (error) {
-      return response.status(500).json({
-        success: false,
-        message: "Erreur lors de la récupération des contacts"
+      contacts.push({
+        rideId: ride.id,
+        contactId: contactUser.id, // Ajouté pour le debug
+        name: contactUser.firstName,
+        avatar: contactUser.avatar,
+        lastMessage: message.content,
+        unreadCount: Number(unreadCount?.$extras.total) || 0,
+        createdAt: message.createdAt.toISO()
       })
     }
+
+    return response.ok({
+      status: 'success',
+      contacts
+    })
+
+  } catch (error) {
+    console.error('Error in getContacts:', error)
+    return response.internalServerError({
+      status: 'error',
+      message: 'Erreur lors de la récupération des contacts'
+    })
   }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public async getMessages({ auth, response }: HttpContextContract) {
+ 
+
+  try {
+    const messages = await Message.query()
+      .orderBy('created_at', 'desc')
+
+    return response.ok({
+      status: 'success',
+      messages
+    })
+  } catch (error) {
+    console.error('Error in getMessages:', error)
+    return response.internalServerError({
+      status: 'error',
+      message: 'Une erreur est survenue lors de la récupération des messages'
+    })
+  }
+}
+
 
 
   }

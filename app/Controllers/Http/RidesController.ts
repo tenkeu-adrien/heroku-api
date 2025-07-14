@@ -124,7 +124,6 @@ export default class RidesController {
 public async indexx({ auth, request, response }: HttpContextContract) {
     await auth.authenticate()
     const user = auth.user!
-
     const page = request.input('page', 1)
     const limit = 10
     const status = request.input('status', 'pending')

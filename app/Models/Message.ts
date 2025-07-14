@@ -22,14 +22,26 @@ public isRead: boolean
   @column()
   public content: string
 
-  @belongsTo(() => User, { foreignKey: 'senderId' })
+  // @belongsTo(() => User, { foreignKey: 'senderId' })
+  // public sender: BelongsTo<typeof User>
+
+  // @belongsTo(() => User, { foreignKey: 'receiverId' })
+  // public receiver: BelongsTo<typeof User>
+
+  // @belongsTo(() => Ride)
+  // public ride: BelongsTo<typeof Ride>
+
+  @belongsTo(() => Ride, { foreignKey: 'ride_id' })
+  public ride: BelongsTo<typeof Ride>
+
+  @belongsTo(() => User, { foreignKey: 'sender_id' })
   public sender: BelongsTo<typeof User>
 
-  @belongsTo(() => User, { foreignKey: 'receiverId' })
+  @belongsTo(() => User, { foreignKey: 'receiver_id' })
   public receiver: BelongsTo<typeof User>
 
-  @belongsTo(() => Ride)
-  public ride: BelongsTo<typeof Ride>
+
+  
 
    @column.dateTime({ autoCreate: true })
     public createdAt: DateTime

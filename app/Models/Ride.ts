@@ -1,8 +1,9 @@
 // app/Models/Ride.ts
 import { DateTime } from 'luxon'
-import { BaseModel, column, belongsTo, BelongsTo, hasOne, HasOne } from '@ioc:Adonis/Lucid/Orm'
+import { BaseModel, column, belongsTo, BelongsTo, hasOne, HasOne, hasMany, HasMany } from '@ioc:Adonis/Lucid/Orm'
 import User from './User'
 import Review from './Review'
+import Message from './Message'
 
 export default class Ride extends BaseModel {
   @column({ isPrimary: true })
@@ -95,6 +96,11 @@ export default class Ride extends BaseModel {
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime
+
+  @hasMany(() => Message, { 
+    foreignKey: 'ride_id' // Doit correspondre exactement au nom de colonne dans la table messages
+  })
+  public messages: HasMany<typeof Message>
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   public updatedAt: DateTime

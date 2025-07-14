@@ -24,7 +24,7 @@ Route.get('/', async () => {
   return { hello: 'world' }
 }).prefix('/api/v1')
 
-
+// Route.get('/messagess/', 'MessagesController.getMessages').prefix("/api/v1")
 
 
 Route.group(() => {
@@ -63,7 +63,7 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
 
 Route.group(() => {
   Route.get('/messages', 'MessagesController.index')
-  Route.get('/messages/contacts', 'MessagesController.getContact')
+  Route.get('/messages/contacts', 'MessagesController.getContacts').middleware('auth')
   Route.post('/messages', 'MessagesController.store')
 
   Route.get('/rides/:rideId/messages', 'MessagesController.indexx')
@@ -80,7 +80,7 @@ Route.group(() => {
     // Courses
     Route.patch('/rides/:id/status', 'RidesController.updateStatus').middleware("auth")
     Route.post('/rides', 'RidesController.store').middleware('auth')
-    Route.get('/rides', 'RidesController.indexx')
+    Route.get('/rides', 'RidesController.indexx').middleware('auth')
     Route.get('/rides/history', 'RidesController.index')
     Route.get('/rides/historyy', 'RidesController.history')
     Route.get('/ridess/', 'RidesController.indexx').middleware('auth')
