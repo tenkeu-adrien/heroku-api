@@ -277,23 +277,12 @@ public async store({ request, response , auth}: HttpContextContract) {
       destination_location: ride.destinationLocation,
       status: ride.status,
       price:ride.price,
-      vehicleType: ride.vehicleType ,
+      vehicle_type: ride.vehicleType ,
       duration:ride.duration || null,
       distance:ride.distance || null,
       payment_method :ride.paymentMethod
     })
 
-      io.emit('ride:neww', {
-      rideId: ride.id,
-      clientId: ride.clientId,
-      pickupLocation: ride.pickupLocation,
-      destinationLocation: ride.destinationLocation,
-      status: ride.status,
-      price:ride.price,
-      vehicle_type: ride.vehicleType ,
-      duration:ride.duration || null,
-      distance:ride.distance || null
-    })
 
 // console.log("ride dans le controllers " ,ride.destinationLocation)
 
