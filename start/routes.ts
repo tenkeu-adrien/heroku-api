@@ -24,7 +24,7 @@ Route.get('/', async () => {
   return { hello: 'world' }
 }).prefix('/api/v1')
 
-// Route.get('/messagess/', 'MessagesController.getMessages').prefix("/api/v1")
+Route.get('/messagess/', 'MessagesController.getMessages').prefix("/api/v1")
 
 
 Route.group(() => {
@@ -58,6 +58,19 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   Route.post('/refresh', 'AuthControllers.refresh').middleware('auth')
   Route.post('/forgot-password', 'AuthControllers.forgotPassword')
   Route.post('/reset-password', 'AuthControllers.resetPassword')
+  // Route.get('/restaurants', 'RestaurantsController.index')
+  // Route.get('/restaurants/:id', 'RestaurantsController.show')
+  // Dishes
+  Route.post('/dishes/:id/like', 'DishesController.like').middleware('auth')
+  Route.post('/dishes/:id/dislike', 'DishesController.dislike').middleware('auth')
+  // Orders
+  Route.post('/orders', 'OrdersController.store').middleware('auth')
+  Route.get('/orders', 'OrdersController.index').middleware('auth')
+  Route.get('/orders/:id', 'OrdersController.show').middleware('auth')
+  Route.get('/restaurants', 'RestaurantsController.index')
+  Route.get('/restaurants/export', 'RestaurantsController.export')
+  Route.post('/restaurants/:id/toggle-favorite', 'RestaurantsController.toggleFavorite')
+  Route.delete('/restaurants/:id', 'RestaurantsController.destroy')
 }).prefix('/api/v1')
 
 
@@ -68,7 +81,7 @@ Route.group(() => {
 
   Route.get('/rides/:rideId/messages', 'MessagesController.indexx')
   Route.post('/rides/:rideId/messages', 'MessagesController.storee')
-  Route.patch('/rides/:rideId/messages/read', 'MessagesController.markAsRead')
+  Route.patch('/rides/:rideId/messages/read', 'MessagesController.markMessagesAsRead')
 }).prefix('/api/v1').middleware('auth')
 
 
@@ -89,7 +102,7 @@ Route.group(() => {
     Route.get('/rides/user/:id', 'RidesController.show')
    
     // Route.get('/rides/:rideId/messages', 'MessagesController.getRideMessages')
-    Route.put('/rides/:rideId/messages/read', 'MessagesController.markMessagesAsRead')
+    // Route.put('/rides/:rideId/messages/read', 'MessagesController.markMessagesAsRead')
     Route.get('/rides/export', 'RidesController.export')
 
     //  Route.patch('/rides/:id/status', 'RideController.updateStatus').middleware('auth')
@@ -145,11 +158,6 @@ Route.patch('/driver-payouts/:id/status', 'DriverPayoutsController.updateStatus'
 
 
 
-    // Commandes
-    // Route.post('/orders', 'OrdersController.index')
-    Route.get('/orders', 'OrdersController.history')
-    Route.get('/orders/:id', 'OrdersController.show')
-    Route.post('/orders/:id/cancel', 'OrdersController.cancel')
 
     // Paiements
     Route.post('/payments/initiate', 'PaymentController.initiate')
@@ -166,11 +174,7 @@ Route.patch('/driver-payouts/:id/status', 'DriverPayoutsController.updateStatus'
   })
   // .middleware(['auth', 'checkRole:driver'])
   // Delivery man routes
-  Route.group(() => {
-    Route.get('/orders/available', 'OrdersController.available')
-    Route.post('/orders/:id/accept', 'OrdersController.accept')
-    Route.post('/orders/:id/complete', 'OrdersController.complete')
-  })
+
   // .middleware(['auth', 'checkRole:delivery_man'])
   // Admin routes
 // start/routes.ts

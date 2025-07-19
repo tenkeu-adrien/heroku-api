@@ -129,8 +129,7 @@ public async indexx({ auth, request, response }: HttpContextContract) {
     const status = request.input('status', 'pending')
 
 
-    console.log("status page" , status ,page)
-    console.log("user connecter" ,user)
+    // console.log("status page" , status ,page)
     let query = Ride.query()
       .orderBy('created_at', 'desc')
       .preload('driver')
@@ -302,7 +301,8 @@ public async store({ request, response , auth}: HttpContextContract) {
     const { id } = params
  
 
-    console.log("position" , request.body())
+    // console.log("position" , request.body())
+    console.log("nous sommes dans position")
     const ride = await Ride.findOrFail(id)
     // console.log("ma position" ,position)
     // Mettre à jour la position

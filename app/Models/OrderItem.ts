@@ -1,8 +1,7 @@
-// app/Models/OrderItem.ts
 import { DateTime } from 'luxon'
 import { BaseModel, column, belongsTo, BelongsTo } from '@ioc:Adonis/Lucid/Orm'
 import Order from './Order'
-import Product from './Product'
+import Dish from './Dish'
 
 export default class OrderItem extends BaseModel {
   @column({ isPrimary: true })
@@ -12,7 +11,7 @@ export default class OrderItem extends BaseModel {
   public orderId: number
 
   @column()
-  public productId: number
+  public dishId: number
 
   @column()
   public quantity: number
@@ -23,8 +22,8 @@ export default class OrderItem extends BaseModel {
   @belongsTo(() => Order)
   public order: BelongsTo<typeof Order>
 
-  @belongsTo(() => Product)
-  public product: BelongsTo<typeof Product>
+  @belongsTo(() => Dish)
+  public dish: BelongsTo<typeof Dish>
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

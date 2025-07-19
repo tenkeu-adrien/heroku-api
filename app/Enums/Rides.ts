@@ -11,7 +11,7 @@ export enum RideStatuses {
   // app/Enums/VehicleTypes.ts
 export enum VehicleTypes {
     MOTO = 'moto-taxi',
-    TRICYCLE = 'tricycle'
+    // TRICYCLE = 'tricycle'
   }
 
 
