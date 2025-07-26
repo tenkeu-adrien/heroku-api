@@ -16,37 +16,37 @@ import { DateTime } from 'luxon'
 export default class extends BaseSeeder {
   public async run() {
     // Création des prix
-    // await Pricing.createMany([
-    //   { 
-    //     vehicle_id: 1,
-    //     base_price: 20,
-    //     price_per_km: 500,
-    //     peak_hours_multiplier: 1.5,
-    //     delivery_fee: 2000,
-    //     commission_rate: 10
-    //   },
-    //   {
-    //     vehicle_id: 2,
-    //     base_price: 3000,
-    //     price_per_km: 500,
-    //     peak_hours_multiplier: 1.8,
-    //     delivery_fee: 2500,
-    //     commission_rate: 12
-    //   }
-    // ])
+    await Pricing.createMany([
+      { 
+        vehicle_id: 1,
+        base_price: 20,
+        price_per_km: 500,
+        peak_hours_multiplier: 1.5,
+        delivery_fee: 2000,
+        commission_rate: 10
+      },
+      {
+        vehicle_id: 2,
+        base_price: 3000,
+        price_per_km: 500,
+        peak_hours_multiplier: 1.8,
+        delivery_fee: 2500,
+        commission_rate: 12
+      }
+    ])
 
     // Création des données de test
-    // await UserFactory.createMany(12)
+    await UserFactory.createMany(12)
     await RideFactory.createMany(60)
-    // await RatingFactory.createMany(20)
+    await RatingFactory.createMany(20)
     await TransactionFactory.createMany(15)
-    // await DriverPayoutFactory.createMany(15)
+    await DriverPayoutFactory.createMany(15)
     // await RatingFactory.createMany(15)
     // await UserFactory.createMany(12)
-    // await RestaurantFactory.createMany(12)
-    // await DishFactory.createMany(12)
-    // await OrderFactory.createMany(12)
-    // await OrderItemFactory.createMany(12)
+    await RestaurantFactory.createMany(12)
+    await DishFactory.createMany(12)
+    await OrderFactory.createMany(12)
+    await OrderItemFactory.createMany(12)
 
     // Création des codes promo
     const users = await User.query().limit(10)
