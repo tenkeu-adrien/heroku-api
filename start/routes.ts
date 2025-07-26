@@ -61,17 +61,27 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   // Route.get('/restaurants', 'RestaurantsController.index')
   // Route.get('/restaurants/:id', 'RestaurantsController.show')
   // Dishes
-  Route.post('/dishes/:id/like', 'DishesController.like').middleware('auth')
-  Route.post('/dishes/:id/dislike', 'DishesController.dislike').middleware('auth')
+  Route.post('/dishes/:id/like', 'DishesController.like')
+  Route.post('/dishes/:id/dislike', 'DishesController.dislike')
+  Route.post('/dishes/:id', 'RestaurantsController.addDish')
   // Orders
   Route.post('/orders', 'OrdersController.store').middleware('auth')
   Route.get('/orders', 'OrdersController.index').middleware('auth')
+
   Route.get('/orders/:id', 'OrdersController.show').middleware('auth')
   Route.get('/restaurants', 'RestaurantsController.index')
+  Route.post('/restaurants', 'RestaurantsController.store')
+  Route.patch('/restaurants/:id', 'RestaurantsController.update')
   Route.get('/restaurants/export', 'RestaurantsController.export')
   Route.post('/restaurants/:id/toggle-favorite', 'RestaurantsController.toggleFavorite')
+  Route.get('/restaurants/:id/dishes', 'DishesController.index')
+  Route.delete("/restaurants/:id/dishes/:dish_id", "RestaurantsController.destroy")
   Route.delete('/restaurants/:id', 'RestaurantsController.destroy')
+  Route.patch("/restaurants/:id/toggle-active", "RestaurantsController.toggleActive")
+  Route.delete("dishes/:id", "RestaurantsController.deleteDish")
 }).prefix('/api/v1')
+
+
 
 
 Route.group(() => {

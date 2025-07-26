@@ -9,15 +9,15 @@ const doualaNeighborhoods = [
 ]
 
 const getRandomDoualaCoordinates = () => ({
-  lat: 4.05 + Math.random() * 0.1,
-  lng: 9.70 + Math.random() * 0.1
+  latitude: 4.05 + Math.random() * 0.1,
+  longitude: 9.70 + Math.random() * 0.1
 })
 
 const landmarks = [
   {
     name: 'Hôpital Laquintinie',
     address: 'Rue de la Gendarmerie, Akwa, Douala',
-    coordinates: { lat: 4.0486, lng: 9.7064 }
+    coordinates: { latitude: 4.0486, longitude: 9.7064 }
   },
   // ... autres landmarks
 ]

@@ -6,8 +6,9 @@ import Dish from 'App/Models/Dish'
 
 export default class OrdersController {
   public async store({ request, auth, response }: HttpContextContract) {
+    
     const { items, deliveryAddress } = request.only(['items', 'deliveryAddress'])
-
+  console.log("user connecter" ,auth.user)
     const trx = await Database.transaction()
 
     try {

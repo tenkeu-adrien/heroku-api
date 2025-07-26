@@ -197,7 +197,7 @@ public async indexx({ auth, request, response }: HttpContextContract) {
 
 // Controller corrigé
 public async store({ request, response , auth}: HttpContextContract) {
-  console.log("request", request.body())
+  // console.log("request", request.body())
 
   // Récupération des données brutes pour vérifier le type de véhicule
   const rawData = request.all()
@@ -302,7 +302,7 @@ public async store({ request, response , auth}: HttpContextContract) {
  
 
     // console.log("position" , request.body())
-    console.log("nous sommes dans position")
+    // console.log("nous sommes dans position")
     const ride = await Ride.findOrFail(id)
     // console.log("ma position" ,position)
     // Mettre à jour la position
@@ -433,6 +433,7 @@ public async store({ request, response , auth}: HttpContextContract) {
     )
 
     // Émission socket.io
+    console.log("ride de accepted" ,ride)
     const io = Ws.io
     io.to(`ride_${ride.id}`).emit('ride:accepted', {
       rideId: ride.id,

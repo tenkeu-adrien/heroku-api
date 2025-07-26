@@ -84,10 +84,6 @@ public async store({ request, auth ,response}: HttpContextContract) {
 }
 
 
-
-    /**
- * Marquer tous les messages reçus par l'utilisateur sur une course comme lus
- */
 public async markMessagesAsRead({ auth, params, response }: HttpContextContract) {
     const user = auth.user!
     const rideId = params.rideId
@@ -160,162 +156,77 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
     })
   }
 
-//   public async storee({ auth, params, request, response }: HttpContextContract) {
-//     const user = auth.user!
-//     const rideId = params.rideId
-//     const content = request.input('content')
-// console.log("rideId",rideId)
-//     // Vérifier l'accès à la conversation et le statut
-//     const ride = await Ride.query()
-//       .where('id', rideId)
-//       .whereIn('status', ['accepted', 'in_progress' , 'completed']) // Ajout de la vérification du statut
-//       // .andWhere(q => {
-//       //   q.where('client_id', user.id)
-//       //    .orWhere('driver_id', user.id)
-//       // })
-//       .first()
-
-//     if (!ride) {
-//       return response.badRequest({
-//         success: false,
-//         message: 'Course non trouvée ou non acceptée'
-//       })
-//     }
-
-//     // Vérification supplémentaire pour s'assurer qu'on a un receiverId valide
-//     const receiverId = user.role === 'client' 
-//       ? ride.driverId 
-//       : ride.clientId
-
-//     if (!receiverId) {
-//       return response.badRequest({
-//         success: false,
-//         message: 'Destinataire non disponible'
-//       })
-//     }
-
-//     // Créer le message
-//     const message = await Message.create({
-//       rideId,
-//       senderId: user.id,
-//       receiverId,
-//       content
-//     })
-
-//     // Diffuser via WebSocket
-//     const io = Ws.io
-   
-//     // Émettre uniquement au destinataire
-//     io.to(`user_${receiverId}`).emit('new-message', {
-//       id: message.id,
-//       rideId,
-//       senderId: user.id,
-//       receiverId,
-//       text: content,
-//       time: message.createdAt.toLocaleString([], { hour: '2-digit', minute: '2-digit' }),
-//       isRead: false,
-//       createdAt: message.createdAt
-//     })
-   
-//     // Émettre aussi à l'expéditeur pour synchronisation (optionnel)
-//     io.to(`user_${user.id}`).emit('new-message-sent', {
-//       id: message.id,
-//       rideId,
-//       receiverId,
-//       text: content,
-//       time: message.createdAt.toLocaleString([], { hour: '2-digit', minute: '2-digit' }),
-//       isRead: true
-//     })
-
-//     return response.json({
-//       success: true,
-//       message: 'Message envoyé'
-//     })
-// }
 
 
-public async storee({ auth, params, request, response }: HttpContextContract) {
-  const user = auth.user!
-  const rideId = params.rideId
-  const content = request.input('content')
-
-  // Vérifier l'accès à la conversation et le statut
-  const ride = await Ride.query()
-    .where('id', rideId)
-    .whereIn('status', ['accepted', 'in_progress', 'completed'])
-    .first()
-
-  if (!ride) {
-    return response.badRequest({
-      success: false,
-      message: 'Course non trouvée ou non acceptée'
+  public async storee({ auth, params, request, response }: HttpContextContract) {
+    const user = auth.user!
+    const rideId = params.rideId
+    const content = request.input('content')
+  
+    // Vérifier l'accès à la conversation et le statut
+    const ride = await Ride.query()
+      .where('id', rideId)
+      .whereIn('status', ['accepted', 'in_progress', 'completed'])
+      .first()
+  
+    if (!ride) {
+      return response.badRequest({
+        success: false,
+        message: 'Course non trouvée ou non acceptée'
+      })
+    }
+  
+    // Vérification supplémentaire pour s'assurer qu'on a un receiverId valide
+    const receiverId = user.role === 'client' 
+      ? ride.driverId 
+      : ride.clientId
+  
+    if (!receiverId) {
+      return response.badRequest({
+        success: false,
+        message: 'Destinataire non disponible'
+      })
+    }
+  
+    // Créer le message
+    const message = await Message.create({
+      rideId,
+      senderId: user.id,
+      receiverId,
+      content
+    })
+  
+    // Diffuser via WebSocket
+    const io = Ws.io
+  
+    const messageData = {
+      id: message.id,
+      rideId,
+      senderId: user.id,
+      receiverId,
+      content,
+      createdAt: message.createdAt,
+      isRead: false,
+      sender: user.id === message.senderId ? 'user' : 'contact'
+    }
+  
+    io.to(`ride_${rideId}`).emit('ride:message', messageData)
+    io.to(`user_${receiverId}`).emit('notification:new_message', messageData)
+  
+    return response.json({
+      success: true,
+      message: 'Message envoyé',
+      data: messageData
     })
   }
-
-  // Vérification supplémentaire pour s'assurer qu'on a un receiverId valide
-  const receiverId = user.role === 'client' 
-    ? ride.driverId 
-    : ride.clientId
-
-  if (!receiverId) {
-    return response.badRequest({
-      success: false,
-      message: 'Destinataire non disponible'
-    })
-  }
-
-
-  console.log("receiverId",receiverId)
-  // Créer le message
-  const message = await Message.create({
-    rideId,
-    senderId: user.id,
-    receiverId,
-    content
-  })
-
-  // Diffuser via WebSocket
-  const io = Ws.io
-
-  // console.log("message dans controller",message)
-  // Format commun pour les messages
-  const messageData = {
-    id: message.id,
-    rideId,
-    senderId: user.id,
-    receiverId,
-    content,
-    text: content,
-    createdAt: message.createdAt,
-    isRead: false
-  }
-
-  // Émettre au destinataire
-  io.to(`user_${receiverId}`).emit('new-message', {
-    ...messageData,
-    time: message.createdAt.toLocaleString([], { hour: '2-digit', minute: '2-digit' })
-  })
-
-  // Émettre à l'expéditeur pour confirmation
-  io.to(`user_${user.id}`).emit('new-message-sent', {
-    ...messageData,
-    time: message.createdAt.toLocaleString([], { hour: '2-digit', minute: '2-digit' }),
-    isRead: true
-  })
-
-  return response.json({
-    success: true,
-    message: 'Message envoyé',
-    data: messageData
-  })
-}
+  
 
 
 
 public async getContacts({ auth, response }: HttpContextContract) {
   const user = auth.user!
   const userId = user.id
-
+// console.log("nous sommes dans getContacts")
   try {
     // 1. Récupérer tous les messages où l'utilisateur est impliqué
     const messages = await Message.query()
@@ -364,6 +275,7 @@ public async getContacts({ auth, response }: HttpContextContract) {
         lastMessage: message.content,
         unreadCount: Number(unreadCount?.$extras.total) || 0,
         createdAt: message.createdAt.toISO()
+
       })
     }
 
@@ -380,18 +292,6 @@ public async getContacts({ auth, response }: HttpContextContract) {
     })
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 public async getMessages({ auth, response }: HttpContextContract) {
@@ -413,7 +313,6 @@ public async getMessages({ auth, response }: HttpContextContract) {
     })
   }
 }
-
 
 
   }

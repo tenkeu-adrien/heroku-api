@@ -18,7 +18,6 @@ export default class Restaurant extends BaseModel {
   @column()
   public isFavorite: boolean
 
-
   @column()
   public createdBy: number
 
