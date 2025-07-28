@@ -11,7 +11,7 @@ export default class AuthController {
     firstName: schema.string(),
     password: schema.string(),
     phone: schema.string(),
-    role: schema.enum(['client', 'driver', 'deliverer' ,'manager'] as const),
+    role: schema.enum(['client', 'driver', 'deliverer' ,'manager' ,'admin'] as const),
     vehiculeType: schema.string.optional(),
   matricule: schema.string.optional(),
   avatar: schema.string.optional(), // Maintenant un string (URL)

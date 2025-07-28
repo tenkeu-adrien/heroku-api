@@ -121,15 +121,13 @@ export default class RidesController {
 
 
   
-public async indexx({ auth, request, response }: HttpContextContract) {
+  public async indexx({ auth, request, response }: HttpContextContract) {
     await auth.authenticate()
     const user = auth.user!
     const page = request.input('page', 1)
     const limit = 10
     const status = request.input('status', 'pending')
 
-
-    // console.log("status page" , status ,page)
     let query = Ride.query()
       .orderBy('created_at', 'desc')
       .preload('driver')
@@ -138,17 +136,25 @@ public async indexx({ auth, request, response }: HttpContextContract) {
     if (user.role === 'client') {
       query = query.where('client_id', user.id)
     } else if (user.role === 'driver') {
-      if (status === 'pending') {
+      if (status.includes('pending')) {
+        // Si le statut contient 'pending', on applique les filtres spécifiques
         query = query
           .where('status', 'pending')
           .where('vehicle_type', user.vehicule_type) // Filtrer par type de véhicule du driver
       } else {
+        // Pour les autres statuts, on filtre par driver_id
         query = query.where('driver_id', user.id)
       }
     }
 
     if (status !== 'all') {
-      query = query.where('status', status)
+      // Si le statut contient plusieurs valeurs séparées par des virgules
+      if (status.includes(',')) {
+        const statuses = status.split(',')
+        query = query.whereIn('status', statuses)
+      } else {
+        query = query.where('status', status)
+      }
     }
 
     const rides = await query.paginate(page, limit)
@@ -370,8 +376,8 @@ public async store({ request, response , auth}: HttpContextContract) {
         driverId: user.id,
         status: 'accepted',
         startedAt: DateTime.now(),
-        driverLatitude: position?.latitude || undefined,
-        driverLongitude: position?.longitude,
+        driverLatitude: request.input("driver_latitude") || undefined,
+        driverLongitude: request.input("driver_longitude") || undefined,
         lastPositionUpdate: DateTime.now(),
         updatedAt: DateTime.now()
       })
@@ -414,7 +420,10 @@ public async store({ request, response , auth}: HttpContextContract) {
   }
 
   // 6. Sauvegarde de la course
-  await ride.save()
+   await ride.load('driver')
+
+
+console.log("ride  dans updatStatus " ,ride.driver)
 
   // 7. Envoi de notification et mise à jour en temps réel
   if (status === 'accepted') {
@@ -433,23 +442,21 @@ public async store({ request, response , auth}: HttpContextContract) {
     )
 
     // Émission socket.io
-    console.log("ride de accepted" ,ride)
     const io = Ws.io
     io.to(`ride_${ride.id}`).emit('ride:accepted', {
       rideId: ride.id,
       driverInfo: {
-        id: driver.id,
-        name: driver.firstName,
-        rating: driver.averageRating || '0.0',
-        vehicle: driver.vehiculeType,
-        phone: driver.phone
+        id: ride.driver.id,
+        name: ride.driver.firstName,
+        rating: ride.driver.averageRating || '0.0',
+        vehicle: ride.driver.vehiculeType,
+        phone: ride.driver.phone
       },
       driverPosition: {
         latitude: ride.driverLatitude,
         longitude: ride.driverLongitude
-      },
-      pickupLocation: ride.pickupLocation,
-      destinationLocation: ride.destinationLocation
+      }
+     
     })
 
   } else {

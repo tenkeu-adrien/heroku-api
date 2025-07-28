@@ -21,7 +21,7 @@
 import Route from '@ioc:Adonis/Core/Route'
 
 Route.get('/', async () => {
-  return { hello: 'world' }
+  return { hello: 'ok c\'est bien ' }
 }).prefix('/api/v1')
 
 Route.get('/messagess/', 'MessagesController.getMessages').prefix("/api/v1")
