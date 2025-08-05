@@ -16,7 +16,6 @@ export default class RatingsSchema extends BaseSchema {
       // Données d'évaluation
       table.float('rating', 2, 1).unsigned().notNullable() // Note entre 0.0 et 5.0
       table.text('comment').nullable()
-      table.boolean('is_driver_rating').notNullable() // Pour différencier évaluation client/driver
       
       // Timestamps
       table.timestamp('created_at', { useTz: true })
