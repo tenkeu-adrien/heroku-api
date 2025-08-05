@@ -19,7 +19,7 @@ export const RatingFactory = Factory
     return {
       rating: rating,
       comment: faker.datatype.boolean(0.7) ? faker.lorem.sentence() : null,
-      isDriverRating: faker.datatype.boolean(),
+      // isDriverRating: faker.datatype.boolean(),
       rideId: rideId,
       clientId: clientId,
       driverId: driverId
