@@ -66,9 +66,12 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   Route.post('/dishes/:id', 'RestaurantsController.addDish')
   // Orders
   Route.post('/orders', 'OrdersController.store').middleware('auth')
-  Route.get('/orders', 'OrdersController.index').middleware('auth')
+  Route.get('/orders', 'OrdersController.index')
+  Route.post('/ratings', 'RatingController.store').middleware('auth')
 
-  Route.get('/orders/:id', 'OrdersController.show').middleware('auth')
+  Route.get('/orders/:id', 'OrdersController.show')
+  Route.get('/orders/export', 'OrdersController.export')
+  Route.patch('/orders/:id/delivered', 'OrdersController.markAsDelivered')
   Route.get('/restaurants', 'RestaurantsController.index')
   Route.post('/restaurants', 'RestaurantsController.store')
   Route.patch('/restaurants/:id', 'RestaurantsController.update')
@@ -79,6 +82,8 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   Route.delete('/restaurants/:id', 'RestaurantsController.destroy')
   Route.patch("/restaurants/:id/toggle-active", "RestaurantsController.toggleActive")
   Route.delete("dishes/:id", "RestaurantsController.deleteDish")
+  Route.patch("dishes/:id", "RestaurantsController.updateDish")
+  Route.get('/drivers/:id/ratings', 'RidesController.getDriverRatings')
 }).prefix('/api/v1')
 
 
@@ -194,12 +199,12 @@ Route.patch('/driver-payouts/:id/status', 'DriverPayoutsController.updateStatus'
 
 
 // start/routes.ts
-Route.group(() => {
-  // Routes pour les évaluations
-  Route.post('/ratings', 'RatingsController.store')
-  Route.get('/ratings', 'RatingsController.index')
-  Route.get('/ratings/:id', 'RatingsController.show')
-})
+// Route.group(() => {
+//   // Routes pour les évaluations
+//   Route.post('/ratings', 'RatingsController.store')
+//   Route.get('/ratings', 'RatingsController.index')
+//   Route.get('/ratings/:id', 'RatingsController.show')
+// })
 
 
 

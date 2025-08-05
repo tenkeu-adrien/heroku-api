@@ -7,7 +7,8 @@ import User from 'App/Models/User'
 
 export default class RatingsController {
   // Créer une évaluation
-  public async store({ request, response}: HttpContextContract) {
+  public async store({ request, response, auth }: HttpContextContract) {
+    const user = auth.user!
     const validationSchema = schema.create({
       ride_id: schema.number([
         rules.exists({ table: 'rides', column: 'id' })
@@ -16,7 +17,7 @@ export default class RatingsController {
         rules.range(0, 5)
       ]),
       comment: schema.string.optional({ trim: true }),
-      is_driver_rating: schema.boolean()
+      // is_driver_rating: schema.boolean()
     })
 
     const data = await request.validate({
@@ -36,7 +37,7 @@ export default class RatingsController {
       driverId: ride.driverId,
       rating: data.rating,
       comment: data.comment,
-      isDriverRating: data.is_driver_rating,
+      // isDriverRating: data.is_driver_rating,
     })
 
     return response.created(rating)

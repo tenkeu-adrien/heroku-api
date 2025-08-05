@@ -18,8 +18,8 @@ table.timestamp('scheduled_at').nullable() // Pour les courses programmées
       table.timestamp('completed_at').nullable()
 
       // Dans votre migration existante, ajoutez ces champs :
-table.float('driver_latitude').nullable()
-table.float('driver_longitude').nullable()
+table.string('driver_latitude').nullable()
+table.string('driver_longitude').nullable()
 table.timestamp('last_position_update').nullable()
 table.json('route_coordinates').nullable()
 table.json('driver_to_pickup_route').nullable()

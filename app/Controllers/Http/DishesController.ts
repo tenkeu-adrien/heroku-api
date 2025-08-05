@@ -6,40 +6,40 @@ export default class DishesController {
     const dish = await Dish.findOrFail(params.id)
     dish.likes++
     await dish.save()
-    console.log("dish",dish)
+    console.log("ok le like" ,dish)
     return response.ok(dish)
   }
 
-  public async dislike({ params, auth, response }: HttpContextContract) {
+  public async dislike({ params, response }: HttpContextContract) {
     const dish = await Dish.findOrFail(params.id)
     dish.dislikes++
     await dish.save()
+    console.log("ok le dislike" ,dish)
     return response.ok(dish)
   }
 
 
 
 
-  public async index({response, params }: HttpContextContract) {
+  public async index({ response, params, request }: HttpContextContract) {
     try {
       const restaurantId = params.id
-
-    
-
-      // Pour les autres rôles, on ne renvoie que les plats actifs
-      const dishes = await Dish.query()
+      const page = request.input('page', 1)
+      const limit = request.input('limit', 10)
+  
+      const dishesQuery = Dish.query()
         .where('restaurant_id', restaurantId)
-        // .where('is_active', true)
         .orderBy('created_at', 'desc')
-
-
-        // console.log("dishes",dishes)
+  
+      const dishes = await dishesQuery.paginate(page, limit)
+  
       return response.send({
         success: true,
-        dishes,
+        data: dishes.all(),          // Les données
+        meta: dishes.getMeta(),      // Les métadonnées de pagination
         message: "Plats récupérés avec succès"
       })
-
+  
     } catch (error) {
       return response.status(500).send({
         success: false,

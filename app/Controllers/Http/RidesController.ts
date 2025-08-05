@@ -10,6 +10,7 @@ import NotificationService from 'App/Services/NotificationService'
 import PushToken from 'App/Models/PushToken'
 import axios from 'axios'
 import User from 'App/Models/User'
+import Rating from 'App/Models/Rating'
 export default class RidesController {
   public async index({ request,response }: HttpContextContract) {
     // const user = auth.user!
@@ -131,7 +132,7 @@ export default class RidesController {
     let query = Ride.query()
       .orderBy('created_at', 'desc')
       .preload('driver')
-      .preload('client')
+      // .preload('client')
 
     if (user.role === 'client') {
       query = query.where('client_id', user.id)
@@ -139,7 +140,7 @@ export default class RidesController {
       if (status.includes('pending')) {
         // Si le statut contient 'pending', on applique les filtres spécifiques
         query = query
-          .where('status', 'pending')
+          .whereIn('status', ['pending' ,'accepted'])
           .where('vehicle_type', user.vehicule_type) // Filtrer par type de véhicule du driver
       } else {
         // Pour les autres statuts, on filtre par driver_id
@@ -329,22 +330,48 @@ public async store({ request, response , auth}: HttpContextContract) {
   }
 
 
+  public  async getDriverRatings({request}) {
+const {id:driverId} = request.params("id")
+    console.log("averageQuery" ,driverId)
+    const averageQuery = await Rating.query()
+      .where('driver_id', driverId)
+      // .andWhere('is_driver_rating', true)
+      .avg('rating as avg')
+      .first()
+  
+  
+    const averageRating = averageQuery?.$extras.avg ? parseFloat(averageQuery.$extras.avg).toFixed(1) : '0.0'
+  
+    const ratings = await Rating.query()
+      .where('driver_id', driverId)
+      // .andWhere('is_driver_rating', true)
+      .select(['rating', 'comment', 'created_at'])
+      .orderBy('created_at', 'desc')
+      .limit(10) // pour éviter d'envoyer trop de data, on limite aux 10 derniers
+  
+    return {
+      averageRating,
+      ratings,
+    }
+  }
 
  public async updateStatus({ params, request, auth, response }: HttpContextContract) {
   // 1. Validation des données
+  const user = await auth.authenticate()
   const statusSchema = schema.create({
     status: schema.enum(['requested', 'accepted', 'in_progress', 'completed', 'cancelled'] as const),
-    position: schema.object.optional().members({
-      latitude: schema.number(),
-      longitude: schema.number()
-    }),
-    driver_latitude: schema.number.optional(),
-    driver_longitude: schema.number.optional(),
-    last_position_update: schema.string.optional()
+    // position: schema.object.optional().members({
+    //   latitude: schema.number(),
+    //   longitude: schema.number()
+    // }),
+    driver_latitude: schema.string.optional(),
+    driver_longitude: schema.string.optional(),
+    // last_position_update: schema.string.optional()
   })
 
   const payload = await request.validate({ schema: statusSchema })
-  const { status, position } = payload
+  const { status ,driver_latitude,driver_longitude} = payload
+
 
   // 2. Récupération de la course
   const ride = await Ride.findOrFail(params.id)
@@ -358,8 +385,7 @@ public async store({ request, response , auth}: HttpContextContract) {
   }
 
   // 4. Authentification
-  const user = await auth.authenticate()
-
+ 
   // 5. Gestion des statuts
   switch (status) {
     case 'accepted':
@@ -376,11 +402,12 @@ public async store({ request, response , auth}: HttpContextContract) {
         driverId: user.id,
         status: 'accepted',
         startedAt: DateTime.now(),
-        driverLatitude: request.input("driver_latitude") || undefined,
-        driverLongitude: request.input("driver_longitude") || undefined,
+        driverLatitude: driver_latitude || undefined,
+        driverLongitude: driver_longitude || undefined,
         lastPositionUpdate: DateTime.now(),
         updatedAt: DateTime.now()
       })
+      await ride.save()
       break
 
     case 'in_progress':
@@ -404,6 +431,7 @@ public async store({ request, response , auth}: HttpContextContract) {
         status: 'completed',
         endedAt: DateTime.now()
       })
+      await ride.save()
       break
 
     case 'cancelled':
@@ -423,13 +451,12 @@ public async store({ request, response , auth}: HttpContextContract) {
    await ride.load('driver')
 
 
-console.log("ride  dans updatStatus " ,ride.driver)
 
   // 7. Envoi de notification et mise à jour en temps réel
   if (status === 'accepted') {
     // Récupération des infos complètes du chauffeur
     const driver = await User.query()
-      .where('id', user.id)
+      .where('id', user?.id)
       .select(['id', 'first_name', 'phone', 'vehicule_type'])
       .firstOrFail()
 
@@ -441,15 +468,15 @@ console.log("ride  dans updatStatus " ,ride.driver)
       { rideId: ride.id }
     )
 
+
     // Émission socket.io
     const io = Ws.io
     io.to(`ride_${ride.id}`).emit('ride:accepted', {
       rideId: ride.id,
       driverInfo: {
         id: ride.driver.id,
-        name: ride.driver.firstName,
-        rating: ride.driver.averageRating || '0.0',
-        vehicle: ride.driver.vehiculeType,
+        first_name: ride.driver.firstName,
+        vehicule_type: ride.driver.vehiculeType,
         phone: ride.driver.phone
       },
       driverPosition: {
@@ -482,6 +509,7 @@ console.log("ride  dans updatStatus " ,ride.driver)
   })
 }
   
+
 
 
 

@@ -91,17 +91,19 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
     console.log("rideId",rideId)
     // On vérifie que le user est bien impliqué dans la course
     const ride = await Ride.findBy('id', rideId)
+    console.log("ok je suis arriver 1")
+    console.log("ride",ride)
     if (!ride) {
       return response.notFound({ message: 'Course non trouvée' })
     }
     if (
-      user.role !== 'admin' &&
-      user.id !== ride.clientId &&
-      user.id !== ride.driverId
+      user.id != ride.clientId &&
+      user.id != ride.driverId
     ) {
       return response.unauthorized({ message: 'Accès interdit à cette course' })
     }
   
+
     const updatedCount = await Message
       .query()
       .where('ride_id', rideId)
@@ -162,7 +164,7 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
     const user = auth.user!
     const rideId = params.rideId
     const content = request.input('content')
-  
+  console.log("user" ,user)
     // Vérifier l'accès à la conversation et le statut
     const ride = await Ride.query()
       .where('id', rideId)
@@ -181,6 +183,8 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
       ? ride.driverId 
       : ride.clientId
   
+      console.log("receiverId" ,receiverId)
+
     if (!receiverId) {
       return response.badRequest({
         success: false,

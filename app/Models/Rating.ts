@@ -23,8 +23,8 @@ export default class Rating extends BaseModel {
   @column()
   public comment: string | null
 
-  @column()
-  public isDriverRating: boolean
+  // @column()
+  // public isDriverRating: boolean
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

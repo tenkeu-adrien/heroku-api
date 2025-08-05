@@ -18,11 +18,12 @@ Ws.io.on('connection', (socket) => {
   })
 
   // Rejoindre une room de course avec rôle
-  socket.on('join-ride-room', ({ rideId, userId, role }) => {
-    const roomPrefix = role === 'driver' ? 'driver' : 'client'
+  socket.on('join-ride-room', ({ rideId,role }) => {
+    // const roomPrefix = role === 'driver' ? 'driver' : 'client'
+    console.log()
     socket.join(`ride_${rideId}`) // Room générale
-    socket.join(`ride_${rideId}_${roomPrefix}`) // Room spécifique au rôle
-    console.log(`${role} ${userId} joineddd ride ${rideId}`)
+    socket.join(`ride_${rideId}_${role}`) // Room spécifique au rôle
+    console.log(`${role} joined ride ${rideId}`)
   })
 
   // Quitter une room de course

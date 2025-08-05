@@ -146,7 +146,6 @@ console.log("request body" ,request.body())
   }
 
 
-
   public async updated({ params, request, response}: HttpContextContract) {
     // Vérification des permissions
     // if (!['admin', 'manager'].includes(auth.user!.role)) {
@@ -272,18 +271,76 @@ console.log("request body" ,request.body())
   }
 
 
-  public async addDish({ params, request, response}: HttpContextContract) {
-    const restaurant = await Restaurant.findOrFail(params.id)
 
-    console.log("body",request.body())
+  public async updateDish({  request, response }: HttpContextContract) {
+    // Trouver le plat à mettre à jour
+    const {id} = request.params()
+    const dish = await Dish.findOrFail(id)
+  
+    // Valider les données entrantes avec le même schéma que pour l'ajout
     const dishSchema = schema.create({
       name: schema.string({ trim: true }, [
         rules.maxLength(100)
       ]),
       description: schema.string({ trim: true }),
-      price: schema.number([
-        rules.range(0.1, 10000) // Prix entre 0.1 et 10000
+      price: schema.number(),
+      images: schema.array().members(
+        schema.string({}, [
+          rules.url()
+        ])
+      )
+    })
+  
+    try {
+      const payload = await request.validate({ 
+        schema: dishSchema,
+        messages: {
+          'name.required': 'Le nom du plat est requis',
+          'description.required': 'La description est requise',
+          'price.required': 'Le prix est requis',
+          'price.range': 'Le prix doit être entre 0.1 et 10000',
+          'images.*.url': 'Les images doivent être des URLs valides'
+        }
+      })
+  
+      // Convertir le tableau d'images en JSON
+      const imagesJson = JSON.stringify(payload.images)
+      console.log("Image  ",imagesJson)
+  
+      // Mettre à jour le plat
+      dish.merge({
+        ...payload,
+        images: imagesJson
+      })
+  
+      await dish.save()
+  
+      return response.ok({
+        message: "Plat mis à jour avec succès",
+        data: dish
+      })
+  
+    } catch (error) {
+      return response.status(422).send({
+        message: "Erreur de validation",
+        errors: error.messages
+      })
+    }
+  }
+
+
+
+
+  public async addDish({ params, request, response}: HttpContextContract) {
+    const restaurant = await Restaurant.findOrFail(params.id)
+
+ 
+    const dishSchema = schema.create({
+      name: schema.string({ trim: true }, [
+        rules.maxLength(100)
       ]),
+      description: schema.string({ trim: true }),
+      price: schema.number(),
       images: schema.array().members(
         schema.string({}, [
           rules.url()
@@ -304,6 +361,7 @@ console.log("request body" ,request.body())
       })
 
       // Création du plat
+      console.log("payload",payload)
       const imagesJson = JSON.stringify(payload.images)
       const dish = await restaurant.related('dishes').create({
         ...payload,
@@ -341,12 +399,11 @@ console.log("request body" ,request.body())
       end_date,
       with_dishes = false
     } = request.qs()
-console.log("sommes dans index de restaurants")
     const query = Restaurant.query()
-      .if(search, query => {
-        query.where('name', 'ILIKE', `%${search}%`)
-          .orWhere('cuisine', 'ILIKE', `%${search}%`)
-      })
+    .if(search, query => {
+      query.where('name', 'LIKE', `%${search}%`)
+        .orWhere('cuisine', 'LIKE', `%${search}%`)
+    })
       .if(status, query => {
         query.where('is_active', status === 'active')
       })

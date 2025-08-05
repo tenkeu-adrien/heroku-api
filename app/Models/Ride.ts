@@ -62,10 +62,10 @@ export default class Ride extends BaseModel {
 
   // Nouveaux champs ajoutés
   @column()
-  public driverLatitude?: number | null
+  public driverLatitude?: string | null
 
   @column()
-  public driverLongitude?: number | null
+  public driverLongitude?: string | null
 
   @column.dateTime()
   public lastPositionUpdate?: DateTime | null
