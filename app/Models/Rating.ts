@@ -11,11 +11,8 @@ export default class Rating extends BaseModel {
   @column()
   public rideId: number
 
-  @column({ columnName: 'client_id' })
-  public clientId: number
-
-    @column({ columnName: 'driver_id' })
-  public driverId: number
+    @column({ columnName: 'user_id' })
+  public userId: number
 
   @column()
   public rating: number
@@ -36,9 +33,7 @@ export default class Rating extends BaseModel {
   @belongsTo(() => Ride)
   public ride: BelongsTo<typeof Ride>
 
-  @belongsTo(() => User, { foreignKey: 'clientId' })
-  public client: BelongsTo<typeof User>
+  @belongsTo(() => User)
+  public user: BelongsTo<typeof User>
 
-  @belongsTo(() => User, { foreignKey: 'driverId' })
-  public driver: BelongsTo<typeof User>
 }

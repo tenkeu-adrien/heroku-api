@@ -8,6 +8,8 @@ export default class Restaurants extends BaseSchema {
       table.increments('id')
       table.string('name').notNullable()
       table.string('cuisine').notNullable()
+      table.string("phone")
+       table.string("address")
       table.decimal('rating', 2, 1).defaultTo(0)
       table.string('delivery_time').notNullable()
       table.string('image').notNullable()

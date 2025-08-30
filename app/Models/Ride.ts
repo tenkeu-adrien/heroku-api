@@ -4,6 +4,7 @@ import { BaseModel, column, belongsTo, BelongsTo, hasOne, HasOne, hasMany, HasMa
 import User from './User'
 import Review from './Review'
 import Message from './Message'
+import PromoCode from './PromoCode'
 
 export default class Ride extends BaseModel {
   @column({ isPrimary: true })
@@ -15,11 +16,9 @@ export default class Ride extends BaseModel {
   @column()
   public driverId: number
 
-  @column()
-  public rating?: number
 
   @column()
-  public ratingComment?: string
+  public reason?: string | null
 
   @column()
   public vehicleType: 'moto-taxi' | 'tricycle'
@@ -40,6 +39,9 @@ export default class Ride extends BaseModel {
   public paymentMethod?: string
 
   @column()
+  public promoCodeId: number | null
+
+  @column()
   public recipient?: string
 
   @column()
@@ -50,6 +52,9 @@ export default class Ride extends BaseModel {
 
   @column()
   public status: string | 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled'
+
+  @belongsTo(() => PromoCode)
+  public promoCode: BelongsTo<typeof PromoCode>
 
   @column.dateTime({ autoCreate: false })
   public startedAt: DateTime | null
@@ -76,11 +81,6 @@ export default class Ride extends BaseModel {
   @column()
   public driverToPickupRoute?: any | null // Type JSON
 
-  @column()
-  public currentDriverToken?: string | null // Pour les notifications push
-
-  @column()
-  public currentClientToken?: string | null // Pour les notifications push
 
   @belongsTo(() => User, { foreignKey: 'clientId' })
   public client: BelongsTo<typeof User>

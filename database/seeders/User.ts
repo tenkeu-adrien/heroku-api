@@ -36,17 +36,17 @@ export default class extends BaseSeeder {
     ])
 
     // Création des données de test
+    await UserFactory.createMany(10)
+    await RideFactory.createMany(10)
+    await RatingFactory.createMany(10)
+    await TransactionFactory.createMany(10)
+    await DriverPayoutFactory.createMany(10)
+    await RatingFactory.createMany(15)
     await UserFactory.createMany(12)
-    await RideFactory.createMany(60)
-    await RatingFactory.createMany(20)
-    await TransactionFactory.createMany(15)
-    await DriverPayoutFactory.createMany(15)
-    // await RatingFactory.createMany(15)
-    // await UserFactory.createMany(12)
-    await RestaurantFactory.createMany(12)
-    await DishFactory.createMany(12)
-    await OrderFactory.createMany(12)
-    await OrderItemFactory.createMany(12)
+    await RestaurantFactory.createMany(10)
+    await DishFactory.createMany(10)
+    await OrderFactory.createMany(10)
+    await OrderItemFactory.createMany(10)
 
     // Création des codes promo
     const users = await User.query().limit(10)
@@ -108,7 +108,7 @@ export default class extends BaseSeeder {
         usedCount: 0,
       })
 
-      console.log(`Code promo créé pour l'utilisateur ${user.id}: ${promoInfo.code}${user.id}`)
+    //   console.log(`Code promo créé pour l'utilisateur ${user.id}: ${promoInfo.code}${user.id}`)
     }
   }
 

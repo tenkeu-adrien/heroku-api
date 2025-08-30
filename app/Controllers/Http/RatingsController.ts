@@ -9,6 +9,7 @@ export default class RatingsController {
   // Créer une évaluation
   public async store({ request, response, auth }: HttpContextContract) {
     const user = auth.user!
+    console.log("user dans le controller",user)
     const validationSchema = schema.create({
       ride_id: schema.number([
         rules.exists({ table: 'rides', column: 'id' })
@@ -33,8 +34,7 @@ export default class RatingsController {
 
     const rating = await Rating.create({
       rideId: data.ride_id,
-      clientId: ride.clientId,
-      driverId: ride.driverId,
+      userId: ride.clientId,
       rating: data.rating,
       comment: data.comment,
       // isDriverRating: data.is_driver_rating,
@@ -45,16 +45,14 @@ export default class RatingsController {
 
   // Lister les évaluations d'un utilisateur
   public async index({ request, response }: HttpContextContract) {
-    const { user_id, type } = request.qs()
+    const { user_id} = request.qs()
 
-    if (!user_id || !['driver', 'client'].includes(type)) {
-      return response.badRequest({ message: 'Paramètres invalides' })
-    }
+  
 
     const ratings = await Rating.query()
-      .where(type === 'driver' ? 'driver_id' : 'client_id', user_id)
+      .where('user_id', user_id)
       .preload('ride')
-      .preload(type === 'driver' ? 'client' : 'driver')
+      .preload('user')
       .orderBy('created_at', 'desc')
 
     return response.ok(ratings)
@@ -65,8 +63,8 @@ export default class RatingsController {
     const rating = await Rating.query()
       .where('id', params.id)
       .preload('ride')
-      .preload('client')
-      .preload('driver')
+      .preload('user')
+     
       .firstOrFail()
 
     return response.ok(rating)
@@ -78,11 +76,11 @@ export default class RatingsController {
     const user = await User.query()
       .where('id', auth.user!.id)
       .preload('givenRatings', (query) => {
-        query.preload('driver')
+        query.preload('user')
           .orderBy('created_at', 'desc')
       })
       .preload('receivedRatings', (query) => {
-        query.preload('client')
+        query.preload('user')
           .orderBy('created_at', 'desc')
       })
       .firstOrFail()

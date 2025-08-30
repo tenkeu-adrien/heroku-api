@@ -13,21 +13,17 @@ export const RatingFactory = Factory
 
     // Générer des IDs aléatoires pour les relations
     const rideId = getRandomId()
-    const clientId = getRandomId()
-    const driverId = getRandomId()
+    const userId = getRandomId()
 
     return {
       rating: rating,
       comment: faker.datatype.boolean(0.7) ? faker.lorem.sentence() : null,
       // isDriverRating: faker.datatype.boolean(),
       rideId: rideId,
-      clientId: clientId,
-      driverId: driverId
-    }
+      userId: userId,
+      }
   })
-  // .relation('ride', () => RideFactory.apply('id', getRandomId()))
-  // .relation('client', () => UserFactory.apply('id', getRandomId()))
-  // .relation('driver', () => UserFactory.apply('id', getRandomId()))
+
   .build()
 
 // Fonction utilitaire pour créer des évaluations réalistes
@@ -54,7 +50,7 @@ export async function createCompleteRating() {
   // Créer l'évaluation avec des IDs cohérents
   return await RatingFactory.merge({
     rideId: ride.id,
-    clientId: client.id,
-    driverId: driver.id
+    userId: client.id,
+    
   }).create()
 }

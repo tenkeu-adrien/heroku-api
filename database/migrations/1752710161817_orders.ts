@@ -7,6 +7,7 @@ export default class Orders extends BaseSchema {
     this.schema.createTable(this.tableName, (table) => {
       table.increments('id')
       table.integer('client_id').unsigned().references('id').inTable('users').onDelete('CASCADE')
+       table.integer('driver_id').unsigned().references('id').inTable('users').onDelete('CASCADE')
       table.integer('restaurant_id').unsigned().references('id').inTable('restaurants').onDelete('CASCADE')
       table.string('delivery_address').notNullable()
       table.enum('status', ['pending', 'preparing', 'delivering', 'delivered', 'cancelled']).defaultTo('pending')

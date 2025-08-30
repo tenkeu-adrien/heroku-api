@@ -23,7 +23,7 @@ Ws.io.on('connection', (socket) => {
     console.log()
     socket.join(`ride_${rideId}`) // Room générale
     socket.join(`ride_${rideId}_${role}`) // Room spécifique au rôle
-    console.log(`${role} joined ride ${rideId}`)
+    // console.log(`${role} joined ride ${rideId}`)
   })
 
   // Quitter une room de course
@@ -31,6 +31,6 @@ Ws.io.on('connection', (socket) => {
     const roomPrefix = role === 'driver' ? 'driver' : 'client'
     socket.leave(`ride_${rideId}`)
     socket.leave(`ride_${rideId}_${roomPrefix}`)
-    console.log(`${role} ${userId} left ride ${rideId}`)
+    // console.log(`${role} ${userId} left ride ${rideId}`)
   })
 })

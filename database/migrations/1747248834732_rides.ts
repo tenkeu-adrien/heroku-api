@@ -5,19 +5,16 @@ export default class extends BaseSchema {
 
   public async up () {
     this.schema.createTable(this.tableName, (table) => {
-      table.increments('id')
-
-      table.integer('client_id').unsigned().references('id').inTable('users').onDelete('CASCADE')
-      table.integer('driver_id').unsigned().references('id').inTable('users').nullable()
-      table.enum('vehicle_type', ['moto-taxi', 'tricycle']).notNullable()
-      table.text('pickup_location').notNullable() // { address: string, coordinates: { lat, lng } }
+table.increments('id')
+table.integer('client_id').unsigned().references('id').inTable('users').onDelete('CASCADE')
+table.integer('driver_id').unsigned().references('id').inTable('users').nullable()
+table.enum('vehicle_type', ['moto-taxi', 'tricycle']).notNullable()
+table.text('pickup_location').notNullable() // { address: string, coordinates: { lat, lng } }
 table.text('destination_location').notNullable()
 table.enum('status', ['pending', 'accepted', 'in_progress', 'completed', 'cancelled']).defaultTo('pending')
 table.timestamp('scheduled_at').nullable() // Pour les courses programmées
-      table.timestamp('started_at').nullable()
-      table.timestamp('completed_at').nullable()
-
-      // Dans votre migration existante, ajoutez ces champs :
+table.timestamp('started_at').nullable()
+table.timestamp('completed_at').nullable()
 table.string('driver_latitude').nullable()
 table.string('driver_longitude').nullable()
 table.timestamp('last_position_update').nullable()
@@ -25,21 +22,18 @@ table.json('route_coordinates').nullable()
 table.json('driver_to_pickup_route').nullable()
 table.string('current_driver_token').nullable() // Pour les notifications push
 table.string('current_client_token').nullable()
-table.float('price')  
+table.float('price')  // ← Prix FINAL (après promo)
+table.integer('promo_code_id').unsigned().references('id').inTable('promo_codes').nullable()
 table.enum('payment_method', ['cash', 'orange_money', 'mobile_money']).nullable()
 table.text('recipient_info').nullable()
 table.boolean('is_paid').defaultTo(false)
-table.index(['driver_id', 'created_at'])
-  table.float('rating', 2, 1).nullable().unsigned() // Stocke une note entre 0.0 et 5.0 (1 chiffre après la virgule)
-      table.text('rating_comment').nullable()
-      table.text('recipient').nullable()// pour les livraisons
+table.index(['driver_id', 'created_at'])// Stocke une note entre 0.0 et 5.0 (1 chiffre après la virgule)
+table.text('reason').nullable()
+table.text('recipient').nullable()// pour les livraisons
 table.string('duration').nullable() 
-      table.float('distance').nullable()
-      /**
-       * Uses timestamptz for PostgreSQL and DATETIME2 for MSSQL
-       */
-      table.timestamp('created_at', { useTz: true })
-      table.timestamp('updated_at', { useTz: true })
+table.float('distance').nullable()
+table.timestamp('created_at', { useTz: true })
+table.timestamp('updated_at', { useTz: true })
     })
   }
 

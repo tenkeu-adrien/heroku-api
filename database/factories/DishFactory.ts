@@ -10,8 +10,9 @@ export const DishFactory = Factory.define(Dish, ({ faker }) => {
     dislikes: faker.datatype.number({ min: 0, max: 100 }),
     images: JSON.stringify([
       faker.image.urlLoremFlickr({ category: 'food' }),
-      faker.image.urlLoremFlickr({ category: 'restaurant' }),
+      `https://picsum.photos/640/480?random=${faker.datatype.number({ min: 1, max: 1000 })}`,
+      `https://picsum.photos/640/480?random=${faker.datatype.number({ min: 1, max: 1000 })}`,
     ]),
-    restaurantId: 1, // Tu peux mettre un ID par défaut ou l’ajouter dynamiquement dans un `.with()` si nécessaire
+    restaurantId: faker.datatype.number({ min: 1, max: 10 }), // Random restaurantId between 1 and 10
   }
 }).build()

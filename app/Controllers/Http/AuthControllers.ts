@@ -265,7 +265,6 @@ public async show({ params, response }: HttpContextContract) {
    * Connexion utilisateur
    */
   public async login({ request, response, auth }: HttpContextContract) {
-      console.log("phone , password" ,request.input('username') ,request.input("password"))
     const { phone, password } = await request.validate({ schema: this.loginSchema })
   
 
@@ -276,8 +275,10 @@ public async show({ params, response }: HttpContextContract) {
       const token = await auth.use('api').attempt(phone, password, {
         expiresIn: '7days',
       })
+
       const user = await User.query()
         .where('phone', phone)
+        .where('is_deleted' ,false)
         .firstOrFail()
   
       return response.ok({

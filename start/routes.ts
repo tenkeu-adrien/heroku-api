@@ -43,34 +43,37 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   // Route.get('/users/:id', 'UsersController.indexx')
   Route.get('/dashboard/financial-stats', 'AuthControllers.financialStats')
   Route.get('/users/show/:id', 'UsersController.show')
-  Route.patch('/users/delete/:id', 'UsersController.destroy')
+  Route.patch('/users/delete', 'UsersController.destroy').middleware('auth')
   Route.patch('/users/update/:id', 'UsersController.updated')
   Route.post('/users/:user_id/promo-codes', 'UsersController.promo')
   Route.post('/users/:id/fcm-token', 'UsersController.updateFcmToken')
   Route.get('/ratings/me', 'RatingsController.getUserRatings').middleware('auth')
-  Route.post('/users/check-active-promos', 'UsersController.checkActivePromos')
-  Route.get('/drivers/available', 'UsersController.availableDrivers')
+  Route.post('/users/check-active-promos', 'UsersController.checkActivePromos').middleware('auth')
+  // Route.get('/drivers/available', 'UsersController.availableDrivers')
   Route.get('/users/export', 'UsersController.export')
-  Route.get('user/:user_id/transactions', 'TransactionsController.getUserTransactions')
+  Route.get('user/:id/transactions', 'TransactionsController.getUserTransactions')
   Route.get('drivers/:id/stats', 'StatsController.index')
+  Route.get('/users/:id/completed-rides', 'RideController.getUserCompletedRides');
+  Route.get("/drivers/available" , 'UsersController.getDriver')
     // Récupérer la promo active d'un utilisateur spécifique
-    Route.get('/:userId/active-promo', 'UsersController.getActivePromo')
+    Route.get('/users/:id/rides-stats', 'RidesController.getUserRidesStats').middleware('auth');
+    Route.get('/:id/active-promo', 'UsersController.getActivePromo')
   Route.post('/refresh', 'AuthControllers.refresh').middleware('auth')
   Route.post('/forgot-password', 'AuthControllers.forgotPassword')
   Route.post('/reset-password', 'AuthControllers.resetPassword')
   // Route.get('/restaurants', 'RestaurantsController.index')
   // Route.get('/restaurants/:id', 'RestaurantsController.show')
   // Dishes
-  Route.post('/dishes/:id/like', 'DishesController.like')
-  Route.post('/dishes/:id/dislike', 'DishesController.dislike')
+  Route.patch('/dishes/:id/like', 'DishesController.like')
+  Route.patch('/dishes/:id/dislike', 'DishesController.dislike')
   Route.post('/dishes/:id', 'RestaurantsController.addDish')
   // Orders
   Route.post('/orders', 'OrdersController.store').middleware('auth')
   Route.get('/orders', 'OrdersController.index')
-  Route.post('/ratings', 'RatingController.store').middleware('auth')
+  Route.post('/ratings', 'RatingsController.store').middleware('auth')
 
   Route.get('/orders/:id', 'OrdersController.show')
-  Route.get('/orders/export', 'OrdersController.export')
+  // Route.get('/orders/export', 'OrdersController.export')
   Route.patch('/orders/:id/delivered', 'OrdersController.markAsDelivered')
   Route.get('/restaurants', 'RestaurantsController.index')
   Route.post('/restaurants', 'RestaurantsController.store')
@@ -107,6 +110,7 @@ Route.group(() => {
   Route.group(() => {
     // Courses
     Route.patch('/rides/:id/status', 'RidesController.updateStatus').middleware("auth")
+    Route.patch("/rides/:id/complete" ,"RidesController.complete").middleware('auth')
     Route.post('/rides', 'RidesController.store').middleware('auth')
     Route.get('/rides', 'RidesController.indexx').middleware('auth')
     Route.get('/rides/history', 'RidesController.index')
@@ -136,6 +140,7 @@ Route.get('/rides/payment-distribution', 'RidesController.paymentDistribution');
 
     Route.get('/orders/current', 'OrdersController.current')
     Route.patch('/orders/:id/cancel', 'OrdersController.cancel')
+    Route.patch("orders/:id" ,'OrdersController.update')
     
   })
   // .middleware('auth:api')

@@ -10,7 +10,6 @@ export default class RestaurantsController {
     // if (!['admin', 'manager'].includes(auth.user!.role)) {
     //   return response.unauthorized({ message: 'Unauthorized access' })
     // }
-console.log("request body" ,request.body())
     // Schéma de validation pour le restaurant
     const restaurantSchema = schema.create({
       name: schema.string({ trim: true }, [
@@ -23,6 +22,12 @@ console.log("request body" ,request.body())
       image: schema.string({ trim: true }),
       userId:schema.number(), // On accepte aussi les URLs locales
       is_active: schema.boolean(),
+      phone:schema.string({ trim: true }, [
+        rules.maxLength(100)
+      ]),
+      address:schema.string({ trim: true }, [
+        rules.maxLength(100)
+      ]),
       // dishes: schema.array().members(
       //   schema.object().members({
       //     name: schema.string({ trim: true }, [rules.maxLength(100)]),
@@ -53,6 +58,8 @@ console.log("request body" ,request.body())
         name: payload.name,
         cuisine: payload.cuisine,
         deliveryTime: payload.delivery_time,
+        phone:payload.phone,
+        address:payload.address,
         image: payload.image || undefined,
         isActive: payload.is_active !== undefined ? payload.is_active : true,
         createdBy: payload.userId || 1, // Utiliser l'ID de l'utilisateur connecté ou une valeur par défaut
@@ -114,6 +121,8 @@ console.log("request body" ,request.body())
       image: schema.string.optional({ trim: true }, [
         rules.url()
       ]),
+      address:schema.string.optional({trim:true},[rules.maxLength(100)]),
+      phone:schema.string.optional({trim:true},[rules.maxLength(100)]),
       rating: schema.number.optional(),
       isActive: schema.boolean.optional()
     })
@@ -144,7 +153,6 @@ console.log("request body" ,request.body())
       })
     }
   }
-
 
   public async updated({ params, request, response}: HttpContextContract) {
     // Vérification des permissions
@@ -270,8 +278,6 @@ console.log("request body" ,request.body())
     return response.noContent()
   }
 
-
-
   public async updateDish({  request, response }: HttpContextContract) {
     // Trouver le plat à mettre à jour
     const {id} = request.params()
@@ -328,9 +334,6 @@ console.log("request body" ,request.body())
     }
   }
 
-
-
-
   public async addDish({ params, request, response}: HttpContextContract) {
     const restaurant = await Restaurant.findOrFail(params.id)
 
@@ -385,8 +388,6 @@ console.log("request body" ,request.body())
     }
   }
 
-
-
   public async index({ request, response }: HttpContextContract) {
     // console.log("nous sommes dans indes")
     const { 
@@ -426,6 +427,8 @@ console.log("request body" ,request.body())
 
     const restaurants = await query.paginate(page, per_page)
 
+
+    // console.log("restaurants" ,restaurants)
     return response.ok({
       data: restaurants.serialize().data,
       meta: restaurants.serialize().meta

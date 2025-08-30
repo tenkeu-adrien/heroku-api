@@ -11,6 +11,7 @@ import PushToken from 'App/Models/PushToken'
 import axios from 'axios'
 import User from 'App/Models/User'
 import Rating from 'App/Models/Rating'
+import Transaction from 'App/Models/Transaction'
 export default class RidesController {
   public async index({ request,response }: HttpContextContract) {
     // const user = auth.user!
@@ -120,8 +121,6 @@ export default class RidesController {
   }
 
 
-
-  
   public async indexx({ auth, request, response }: HttpContextContract) {
     await auth.authenticate()
     const user = auth.user!
@@ -215,6 +214,7 @@ public async store({ request, response , auth}: HttpContextContract) {
     vehicleType = 'moto-taxi'
   }
 
+  console.log("rowData",rawData)
   const schemaRide = schema.create({
     vehicleType: schema.enum(['moto-taxi', 'tricycle'] as const),
     paymentMethod: schema.enum(['cash', 'orange_money', 'mobile_money'] as const),
@@ -244,14 +244,15 @@ public async store({ request, response , auth}: HttpContextContract) {
     vehicleType
   }
 
+  console.log("payload",payload)
   try {
     const data = await request.validate({ 
       schema: schemaRide,
       data: payload // On utilise les données modifiées pour la validation
     })
 
-    // console.log("data après validation", data)
-
+    console.log("data après validation", data)
+    // data.vehicleType,
     const ride = await Ride.create({
       vehicleType: data.vehicleType,
       paymentMethod: data.paymentMethod,
@@ -330,12 +331,58 @@ public async store({ request, response , auth}: HttpContextContract) {
   }
 
 
+  // Dans votre Controller (ex: RideController.js)
+
+  public async getUserRidesStats({ response ,params}:HttpContextContract) {
+    try {
+  const  userId =params.id
+      // Compter les courses complétées comme client ou driver
+      const ridesCountResult = await Ride.query()
+        .where('status', 'completed')
+        .andWhere((query) => {
+          query.where('client_id', userId).orWhere('driver_id', userId)
+        })
+        .count('id as total')
+        .first();
+  
+      const ridesCount = ridesCountResult ? Number(ridesCountResult.$extras.total) : 0;
+  
+      // Calculer le total des prix des courses complétées
+      const totalResult = await Ride.query()
+        .where('status', 'completed')
+        .andWhere((query) => {
+          query.where('client_id', userId).orWhere('driver_id', userId)
+        })
+        .sum('price as total')
+        .first();
+  
+      const totalEarnings = totalResult && totalResult.$extras.total 
+        ? parseFloat(totalResult.$extras.total) 
+        : 0;
+  
+      return response.json({
+        success: true,
+        data: {
+          rides_count: ridesCount,
+          total_earnings: totalEarnings,
+        },
+      });
+  
+    } catch (error) {
+      return response.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des statistiques',
+        error: error.message,
+      });
+    }
+  }
+  
   public  async getDriverRatings({request}) {
 const {id:driverId} = request.params("id")
     console.log("averageQuery" ,driverId)
     const averageQuery = await Rating.query()
-      .where('driver_id', driverId)
-      // .andWhere('is_driver_rating', true)
+      .where('user_id', driverId)
+      // .andWhere('ride_id', rideId)
       .avg('rating as avg')
       .first()
   
@@ -343,8 +390,8 @@ const {id:driverId} = request.params("id")
     const averageRating = averageQuery?.$extras.avg ? parseFloat(averageQuery.$extras.avg).toFixed(1) : '0.0'
   
     const ratings = await Rating.query()
-      .where('driver_id', driverId)
-      // .andWhere('is_driver_rating', true)
+      .where('user_id', driverId)
+      // .andWhere('ride_id', rideId)
       .select(['rating', 'comment', 'created_at'])
       .orderBy('created_at', 'desc')
       .limit(10) // pour éviter d'envoyer trop de data, on limite aux 10 derniers
@@ -352,21 +399,52 @@ const {id:driverId} = request.params("id")
     return {
       averageRating,
       ratings,
+    
     }
   }
+
+
+  public async complete({params, response,auth}: HttpContextContract){
+
+    console.log("params dans complete",params)
+    if(auth.user?.role != 'driver'){
+      return response.unauthorized({
+        success: false,
+        message: 'Seul le chauffeur peut terminer la course.'
+      })
+    }
+    const ride = await Ride.findOrFail(params.id)
+    ride.merge({
+      status: 'completed',
+      completedAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      isPaid: true,
+    })
+
+    Transaction.create({
+      rideId: ride.id,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      transactionDate: DateTime.now(),
+      commission: 0,
+    })
+    console.log("ride",ride)
+    await ride.save()
+    return response.noContent()
+
+  }
+
 
  public async updateStatus({ params, request, auth, response }: HttpContextContract) {
   // 1. Validation des données
   const user = await auth.authenticate()
+
+  console.log("params",params ,request.input("status"))
+
   const statusSchema = schema.create({
     status: schema.enum(['requested', 'accepted', 'in_progress', 'completed', 'cancelled'] as const),
-    // position: schema.object.optional().members({
-    //   latitude: schema.number(),
-    //   longitude: schema.number()
-    // }),
     driver_latitude: schema.string.optional(),
     driver_longitude: schema.string.optional(),
-    // last_position_update: schema.string.optional()
   })
 
   const payload = await request.validate({ schema: statusSchema })
@@ -375,7 +453,6 @@ const {id:driverId} = request.params("id")
 
   // 2. Récupération de la course
   const ride = await Ride.findOrFail(params.id)
-  
   // 3. Vérification si le statut est déjà 'accepted'
   if (status === 'accepted' && ride.status === 'accepted') {
     return response.conflict({ 
@@ -421,16 +498,21 @@ const {id:driverId} = request.params("id")
       break
 
     case 'completed':
-      if (user.role !== 'driver' || ride.driverId !== user.id) {
+      if (user.role != 'driver' || ride.driverId != user.id) {
         return response.unauthorized({ 
           success: false,
           message: 'Seul le chauffeur assigné peut terminer la course.' 
         })
       }
+      console.log("completed",ride)
       ride.merge({
         status: 'completed',
-        endedAt: DateTime.now()
+        isPaid:true,
+        completedAt: DateTime.now(),
+        updatedAt: DateTime.now()
       })
+
+    
       await ride.save()
       break
 
@@ -467,8 +549,6 @@ const {id:driverId} = request.params("id")
       `Le chauffeur ${driver.firstName} a accepté votre course.`,
       { rideId: ride.id }
     )
-
-
     // Émission socket.io
     const io = Ws.io
     io.to(`ride_${ride.id}`).emit('ride:accepted', {
@@ -605,11 +685,16 @@ async paymentDistribution({ response }) {
   
 
 
-  public async cancelRide({ params, auth, response }: HttpContextContract) {
+  public async cancelRide({   request ,params, auth, response }: HttpContextContract) {
     const ride = await Ride.findOrFail(params.id)
     const user = auth.user!
 
-    // Admin peut toujours annuler
+    const reasonSchema = schema.create({
+      reason: schema.string.optional()
+    })
+
+    const payload = await request.validate({ schema: reasonSchema })
+    // Admin peut toujours annuler  
     if (user.role === 'admin') {
       ride.status = 'cancelled'
       await ride.save()
@@ -629,12 +714,11 @@ async paymentDistribution({ response }) {
       if (ride.status === 'completed') {
         return response.badRequest({ success:false, message: 'Impossible d\'annuler une course déjà complétée.' })
       }
-      if (ride.status === 'in_progress') {
-        return response.badRequest({ success:false, message: 'Impossible d\'annuler une course en cours.' })
-      }
+   
 
       // Peut annuler si pending ou accepted
       ride.status = 'cancelled'
+      ride.reason = payload.reason || ""
       await ride.save()
       return response.ok({ success:true, message: 'Course annulée.', ride })
     }

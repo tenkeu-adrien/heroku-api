@@ -11,6 +11,10 @@ export default class Order extends BaseModel {
   @column()
   public clientId: number
 
+
+   @column()
+  public driverId: number
+
   @column()
   public restaurantId: number | null
 
@@ -30,6 +34,12 @@ export default class Order extends BaseModel {
     foreignKey: 'clientId',
   })
   public client: BelongsTo<typeof User>
+
+    @belongsTo(() => User, {
+    foreignKey: 'driverId',
+  })
+  public driver: BelongsTo<typeof User>
+
 
   @belongsTo(() => Restaurant)
   public restaurant: BelongsTo<typeof Restaurant>

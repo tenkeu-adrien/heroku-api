@@ -94,32 +94,6 @@ export default class UsersController {
     })
   }
 
-
-
-
-  // public async store({ request, response }: HttpContextContract) {
-  //   const userSchema = schema.create({
-  //     phone: schema.string([rules.unique({ table: 'users', column: 'phone' })]),
-  //     password: schema.string([rules.minLength(8)]),
-  //     role: schema.enum(['client', 'driver', 'deliverer', 'admin'] as const),
-  //       vehicule_type: schema.string.nullableAndOptional(),
-  // matricule: schema.string.nullableAndOptional()
-  //   })
-
-
-
-  //   const data = await request.validate({ schema: userSchema })
-  //   const user = await User.create(data)
-  //     let    paginateUser = response.created(user) 
-  //     // const io = use('Socket')
-      
-  //     // io.emit('user:new', {
-  //     //   userId: user.id,
-  //     //   role: user.role
-  //     // })
-  //  return   response.send({success:true , paginateUser  ,message:"user created succefully"})
-  // }
-
   public async show({ params ,response }: HttpContextContract) {
      let user = await User.findOrFail(params.id)
       
@@ -155,17 +129,15 @@ export default class UsersController {
     return response.ok(user)
 }
 
-  public async destroy({ params, response }: HttpContextContract) {
-    const user = await User.findOrFail(params.id)
-    user.isDeleted =true 
+  public async destroy({ auth, response }: HttpContextContract) {
+    const user = auth.user!
+    const userr = await User.findOrFail(user.id)
+    userr.isDeleted =true 
     let userDelete = await user.save()
 
     // return response.noContent()
     return   response.send({success:true , userDelete  ,message:"user delete succefully"})
   }
-
-
-
 
   public async availableDrivers({ request, response }: HttpContextContract) {
     try {
@@ -195,8 +167,6 @@ export default class UsersController {
     }
   }
 
-
-
     public async updateFcmToken({ request, params, response }: HttpContextContract) {
     try {
       const userId = params.id
@@ -222,7 +192,6 @@ export default class UsersController {
       })
     }
   }
-
 
 
   public async promo({ request, params, response  }: HttpContextContract) {
@@ -251,8 +220,6 @@ export default class UsersController {
 
     return response.created(promoCode)
   }
-
-
 
     public async completedRides({ params, response}: HttpContextContract) {
     try {
@@ -283,29 +250,59 @@ export default class UsersController {
     }
   }
 
-
-
-
   // Dans votre controller d'API
 
 // Pour vérifier les promos actives par batch
-async checkActivePromos({ request, response }) {
-  const { userIds } = request.only(['userIds'])
+ async checkActivePromos({ auth, request, response }) {
+  try {
+    // ✅ Validation du payload
+    const promoSchema = schema.create({
+      code: schema.string({ trim: true }),
+    })
 
-  // console.log("userIds code apis" ,userIds)
-  const promos = await PromoCode.query()
-    .whereIn('user_id', userIds)
-    .where('is_active', true)
-    .where('start_date', '<=', DateTime.now().toSQL())
-    .where('end_date', '>=', DateTime.now().toSQL())
-  
-  const result = {}
-  promos.forEach(promo => {
-    result[promo.userId] = promo.toJSON()
-  })
-  
-  // console.log("resultat dans l'apis " ,result)
-  return response.ok({ data: result })
+    const { code } = await request.validate({ schema: promoSchema })
+    const user = auth.user!
+
+    // ✅ Vérifier si le code promo est actif et valide
+    const promo = await PromoCode.query()
+      .where('code', code)
+      .where('user_id', user.id)
+      .where('is_active', true)
+      .where('start_date', '<=', DateTime.now().toSQL())
+      .where('end_date', '>=', DateTime.now().toSQL())
+      .first()
+
+    if (!promo) {
+      return response.ok({
+        valid: false,
+        promo: null,
+        message: 'Le code promo est invalide ou expiré',
+      })
+    }
+
+    // Vérifier rides_count vs used_count
+    if (promo.usedCount >= promo.ridesCount) {
+      return response.ok({
+        valid: false,
+        promo: null,
+        message: 'Le code promo a déjà été utilisé au maximum',
+      })
+    }
+
+    // ✅ Réponse attendue par ton frontend
+    return response.ok({
+      valid: true,
+      promo: promo.toJSON(),
+      message: 'Code promo appliqué avec succès 🎉',
+    })
+  } catch (error) {
+    console.error('Erreur checkActivePromos:', error)
+    return response.internalServerError({
+      valid: false,
+      promo: null,
+      message: 'Erreur lors de la vérification du code promo',
+    })
+  }
 }
 
 // Pour obtenir la promo active d'un utilisateur
@@ -332,10 +329,6 @@ public async store({ auth, request }: HttpContextContract) {
 
     return { success: true };
   }
-
-
-
-
 
 public async export({ response }: HttpContextContract) {
   const users = await User.all()
@@ -372,10 +365,12 @@ public async export({ response }: HttpContextContract) {
 }
 
 
+public async getDriver({response}:HttpContextContract){
+  const users =  await User.query().where('role', 'driver')
+        .andWhere('vehicule_type', 'moto-taxi')
 
-
-
-
-
+   console.log("users" ,users)
+   return   response.send({success:true , data:users  ,message:"driver get succefully"})
+}
 
 }

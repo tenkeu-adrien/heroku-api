@@ -12,6 +12,12 @@ export default class Restaurant extends BaseModel {
   @column()
   public cuisine: string
 
+    @column()
+  public phone: string
+
+    @column()
+  public address: string
+
   @column()
   public rating: number
 

@@ -82,6 +82,7 @@ export default class OrdersController {
     .whereNotNull('restaurant_id') // Filtre les commandes sans restaurant
     .preload('restaurant')
     .preload('client')
+    .preload("driver")
     .preload('items', (query) => {
       query.preload('dish')
     })
@@ -105,19 +106,26 @@ export default class OrdersController {
     return response.json(order)
   }
 
-  public async update({ params, request, response }) {
-    const order = await Order.findOrFail(params.id)
-    const { status } = request.only(['status'])
+public async update({ params, request, response }) {
+  const order = await Order.findOrFail(params.id)
+  const { status, driver_id } = request.only(['status', 'driver_id'])
 
-    order.status = status
-    await order.save()
+  order.status = status
 
-    // Émettre un événement socket pour la mise à jour
-    const io = Ws.io
-    io.emit('order:status', order)
-
-    return response.json(order)
+  // 👉 Si on passe en "delivering", on affecte aussi le livreur
+  if (status === 'delivering' && driver_id) {
+    order.driverId = driver_id   // ⚠️ adapte selon ton champ exact (driverId ou driver_id)
   }
+
+  await order.save()
+
+  // Émettre un événement socket pour la mise à jour
+  const io = Ws.io
+  io.emit('order:status', order)
+
+  return response.json(order)
+}
+
 
   public async markAsDelivered({ params, response }) {
     const order = await Order.findOrFail(params.id)
@@ -134,6 +142,9 @@ export default class OrdersController {
 
 
   public async export({ response }: HttpContextContract) {
+
+
+    console.log("je suis dans export")
     const orders = await Order.query()
       .preload('client')
       .preload('restaurant')

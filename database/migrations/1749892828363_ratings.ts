@@ -10,9 +10,7 @@ export default class RatingsSchema extends BaseSchema {
       
       // Références aux tables existantes
       table.integer('ride_id').unsigned().references('id').inTable('rides').onDelete('CASCADE')
-      table.integer('client_id').unsigned().references('id').inTable('users').onDelete('CASCADE')
-      table.integer('driver_id').unsigned().references('id').inTable('users').onDelete('CASCADE')
-      
+      table.integer('user_id').unsigned().references('id').inTable('users').onDelete('CASCADE')
       // Données d'évaluation
       table.float('rating', 2, 1).unsigned().notNullable() // Note entre 0.0 et 5.0
       table.text('comment').nullable()
@@ -23,8 +21,7 @@ export default class RatingsSchema extends BaseSchema {
       
       // Index
       table.index(['ride_id'])
-      table.index(['client_id'])
-      table.index(['driver_id'])
+      table.index(['user_id'])
     })
   }
 
