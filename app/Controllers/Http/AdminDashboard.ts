@@ -130,8 +130,6 @@ export default class StatsController {
       .first()
 
     const pendingComplaints = await Database.from('rides')
-      .whereNotNull('rating_comment')
-      .andWhere('rating', '<', 3)
       .count('* as count')
       .first()
 
