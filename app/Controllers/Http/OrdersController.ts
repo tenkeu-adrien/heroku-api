@@ -10,7 +10,7 @@ import { schema, rules } from '@ioc:Adonis/Core/Validator'
 
 export default class OrdersController {
   public async store({ request, auth, response }: HttpContextContract) {
-    console.log("ok le store" ,request.body())
+    // console.log("ok le store" ,request.body())
     const orderSchema = schema.create({
       deliveryAddress: schema.string({ trim: true }, [
         rules.maxLength(255)
@@ -63,7 +63,7 @@ export default class OrdersController {
       await order.load('items')
 
       const io = Ws.io
-      io.emit('order:new', order)
+      io.emit('order:store', order)
 
       return response.created(order)
 
@@ -79,10 +79,12 @@ export default class OrdersController {
   const limit = request.input('limit', 10)
   
   const orders = await Order.query()
-    .whereNotNull('restaurant_id') // Filtre les commandes sans restaurant
+    // .whereNotNull('restaurant_id') // Filtre les commandes sans restaurant
     .preload('restaurant')
     .preload('client')
     .preload("driver")
+    .orderBy('created_at', 'desc')
+    
     .preload('items', (query) => {
       query.preload('dish')
     })
@@ -106,22 +108,124 @@ export default class OrdersController {
     return response.json(order)
   }
 
+
+  // Dans votre contrôleur OrderController.ts
+
+public async showw({ params, response }: HttpContextContract) {
+  try {
+    const order = await Order.query()
+      .where('id', params.id)
+      .preload('restaurant')
+      .preload('orderItems', (query) => {
+        query.preload('dish')
+      })
+      .firstOrFail()
+
+    return response.ok(order)
+  } catch (error) {
+    return response.notFound({ message: 'Commande non trouvée' })
+  }
+}
+
+  public async indexx({ request, auth, response }: HttpContextContract) {
+    try {
+      const page = request.input('page', 1)
+      const limit = request.input('limit', 10)
+      const status = request.input('status')
+      const userRole = request.input('user_role') // client | driver | restaurant
+
+      let query = Order.query()
+        .preload('client')
+        .preload('driver')
+        .preload('restaurant')
+        .orderBy('created_at', 'desc')
+
+
+
+        console.log("query   page  limit status  ,userRole ",page ,status ,userRole)
+     
+      // 🔹 Filtrage par status (supporte plusieurs valeurs séparées par virgule)
+      if (status) {
+       
+        const statuses = status.split(',')
+        console.log("status" ,status ,statuses)
+        query = query.whereIn('status', statuses)
+      }
+      // console.log("query   page  limit status  ,userRole ",query) 
+      // 🔹 Filtrage par rôle utilisateur
+      if (userRole === 'client') {
+        console.log("userRole client")
+        query = query.where('client_id', auth.user!.id)
+      } else if (userRole === 'driver') {
+        console.log("userRole driver")
+        query = query.where('driver_id', auth.user!.id)
+      } else if (userRole === 'restaurant') {
+        console.log("userRole restaurant")
+        query = query.where('restaurant_id', auth.user!.id)
+      }
+
+      const orders = await query.paginate(page, limit)
+
+// console.log("orders" ,)
+
+      return response.json(
+        orders)
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+      return response.status(500).json({
+        message: 'Failed to fetch orders',
+      })
+    }
+  }
+
+
+
+
+
+
+
 public async update({ params, request, response }) {
   const order = await Order.findOrFail(params.id)
+  const io = Ws.io
   const { status, driver_id } = request.only(['status', 'driver_id'])
 
   order.status = status
 
   // 👉 Si on passe en "delivering", on affecte aussi le livreur
   if (status === 'delivering' && driver_id) {
-    order.driverId = driver_id   // ⚠️ adapte selon ton champ exact (driverId ou driver_id)
+    order.driverId = driver_id 
+    await order.save()
+    await order.load("driver")    
+    const orderData = {
+      id: order.id,
+      driver_id: order.driverId, // L'ID du chauffeur attribué
+      // total_amount: order.totalPrice,
+      // restaurant_name: order.restaurant.name,
+      // payment_method: order.paymentMethod,
+      // delivery_address: order.deliveryAddress,
+      // status: order.status,
+      
+    };
+  
+    io.emit('order:new', orderData);  
   }
 
-  await order.save()
 
+  if(status === 'delivered'){
+    await order.load("client")
+    await order.load("driver")
+    await order.load("restaurant")
+    await order.load("items")
+    io.emit('order:delivered', order);  
+  }
+ 
+
+
+  
+  // Émettre à tous les chauffeurs (broadcast)
+  
   // Émettre un événement socket pour la mise à jour
-  const io = Ws.io
-  io.emit('order:status', order)
+  
 
   return response.json(order)
 }

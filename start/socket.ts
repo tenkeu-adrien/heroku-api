@@ -17,13 +17,24 @@ Ws.io.on('connection', (socket) => {
     socket.join(`user_${userId}`)
   })
 
+
+
+    // Rejoindre une room de commande avec rôle
+    socket.on('join-order-room', ({ orderId, role }) => {
+      socket.join(`order_${orderId}`) // Room générale
+      socket.join(`order_${orderId}_${role}`) // Room spécifique au rôle
+    })
+
+    // Quitter une room de commande
+    socket.on('leave-order-room', ({ orderId, userId, role }) => {
+      const roomPrefix = role === 'driver' ? 'driver' : 'client'
+      socket.leave(`order_${orderId}`)
+      socket.leave(`order_${orderId}_${roomPrefix}`)
+    })
   // Rejoindre une room de course avec rôle
   socket.on('join-ride-room', ({ rideId,role }) => {
-    // const roomPrefix = role === 'driver' ? 'driver' : 'client'
-    console.log()
     socket.join(`ride_${rideId}`) // Room générale
     socket.join(`ride_${rideId}_${role}`) // Room spécifique au rôle
-    // console.log(`${role} joined ride ${rideId}`)
   })
 
   // Quitter une room de course
@@ -31,6 +42,5 @@ Ws.io.on('connection', (socket) => {
     const roomPrefix = role === 'driver' ? 'driver' : 'client'
     socket.leave(`ride_${rideId}`)
     socket.leave(`ride_${rideId}_${roomPrefix}`)
-    // console.log(`${role} ${userId} left ride ${rideId}`)
   })
 })

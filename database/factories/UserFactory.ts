@@ -29,7 +29,7 @@ function generateMatricule(faker) {
 }
 
 // Fonction pour générer un numéro de téléphone camerounais valide (9 chiffres, commençant par 6)
-function generateCameroonianPhoneNumber(faker) {
+ export function generateCameroonianPhoneNumber(faker) {
   // Commence toujours par 6 (pour Cameroun)
   const prefix = '6';
   // Génère 8 chiffres aléatoires

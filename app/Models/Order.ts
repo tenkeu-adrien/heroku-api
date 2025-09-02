@@ -21,6 +21,10 @@ export default class Order extends BaseModel {
   @column()
   public deliveryAddress: string
 
+
+  @hasMany(() => OrderItem)
+  public orderItems: HasMany<typeof OrderItem>
+
   @column()
   public status: 'pending' | 'preparing' | 'delivering' | 'delivered' | 'cancelled'
 

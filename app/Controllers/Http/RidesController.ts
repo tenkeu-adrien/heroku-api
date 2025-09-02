@@ -12,6 +12,7 @@ import axios from 'axios'
 import User from 'App/Models/User'
 import Rating from 'App/Models/Rating'
 import Transaction from 'App/Models/Transaction'
+import PromoCode from 'App/Models/PromoCode'
 export default class RidesController {
   public async index({ request,response }: HttpContextContract) {
     // const user = auth.user!
@@ -221,6 +222,7 @@ public async store({ request, response , auth}: HttpContextContract) {
     duration: schema.string.optional(),
     distance: schema.number.optional(),
     price: schema.number(),
+    promoCodeId: schema.number.optional(),
     pickupLocation: schema.object().members({
       address: schema.string(),
       coordinates: schema.object().members({
@@ -259,6 +261,7 @@ public async store({ request, response , auth}: HttpContextContract) {
       duration: data.duration,
       distance: data.distance,
       price: data.price,
+      promoCodeId: data.promoCodeId,
       recipient: request.input("recipientInfo") || null,
       pickupLocation: JSON.stringify(data.pickupLocation),
       destinationLocation: JSON.stringify(data.destinationLocation),
@@ -404,35 +407,60 @@ const {id:driverId} = request.params("id")
   }
 
 
-  public async complete({params, response,auth}: HttpContextContract){
-
-    console.log("params dans complete",params)
-    if(auth.user?.role != 'driver'){
+  public async complete({ params, response, auth }: HttpContextContract) {
+    // console.log("params dans complete", params)
+  
+    if (auth.user?.role !== 'driver') {
       return response.unauthorized({
         success: false,
         message: 'Seul le chauffeur peut terminer la course.'
       })
     }
+  
     const ride = await Ride.findOrFail(params.id)
+  
     ride.merge({
       status: 'completed',
       completedAt: DateTime.now(),
       updatedAt: DateTime.now(),
       isPaid: true,
     })
-
-    Transaction.create({
+  
+    // 🔹 Vérifier si la course avait un code promo
+    if (ride.promoCodeId) {
+      const promo = await PromoCode.find(ride.promoCodeId)
+      if (promo) {
+        // Décrémenter ridesCount si > 0
+        if (promo.ridesCount > 0) {
+          promo.ridesCount = promo.ridesCount - 1
+        }
+  
+        // Incrémenter usedCount
+        promo.usedCount = (promo.usedCount || 0) + 1
+  
+        // Désactiver le code promo si plus de trajets restants
+        if (promo.ridesCount <= 0) {
+          promo.isActive = false
+        }
+  
+        await promo.save()
+      }
+    }
+  
+    await Transaction.create({
       rideId: ride.id,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       transactionDate: DateTime.now(),
       commission: 0,
     })
-    console.log("ride",ride)
+  
+    console.log("ride", ride)
     await ride.save()
+  
     return response.noContent()
-
   }
+  
 
 
  public async updateStatus({ params, request, auth, response }: HttpContextContract) {
@@ -484,6 +512,7 @@ const {id:driverId} = request.params("id")
         lastPositionUpdate: DateTime.now(),
         updatedAt: DateTime.now()
       })
+
       await ride.save()
       break
 
@@ -533,7 +562,7 @@ const {id:driverId} = request.params("id")
    await ride.load('driver')
 
 
-
+await ride.save()
   // 7. Envoi de notification et mise à jour en temps réel
   if (status === 'accepted') {
     // Récupération des infos complètes du chauffeur
@@ -589,10 +618,6 @@ const {id:driverId} = request.params("id")
   })
 }
   
-
-
-
-
   // Dans votre contrôleur RidesController.js
 
 public async revenueStats({ response }) {

@@ -3,7 +3,7 @@ import ExcelJS from 'exceljs';
 
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import Database from '@ioc:Adonis/Lucid/Database'
-import Ride from 'App/Models/Ride'
+// import Ride from 'App/Models/Ride'
 import { DateTime } from 'luxon'
 
 export default class StatsController {

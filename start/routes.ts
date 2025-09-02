@@ -70,6 +70,8 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   // Orders
   Route.post('/orders', 'OrdersController.store').middleware('auth')
   Route.get('/orders', 'OrdersController.index')
+  Route.get('/dish/:id', 'OrdersController.showw').middleware('auth')
+  Route.get("/orderss" , 'OrdersController.indexx').middleware('auth')
   Route.post('/ratings', 'RatingsController.store').middleware('auth')
 
   Route.get('/orders/:id', 'OrdersController.show')
