@@ -22,7 +22,7 @@ export default class AuthController {
   // Schema de validation pour la connexion
   private loginSchema =schema.create({
     phone: schema.string(), // ou autres règles si nécessaire
-    password: schema.string({}, [rules.minLength(6)]),
+    password: schema.string()
   })
   
 
@@ -49,7 +49,7 @@ public async register({ request, response, auth }: HttpContextContract) {
     })
 
     const token = await auth.use('api').generate(user, {
-      expiresIn: '7days',
+      expiresIn: '30days',
     })
 
     return response.created({
@@ -164,8 +164,8 @@ public async update({ params, request, response }: HttpContextContract) {
 public async show({ params, response }: HttpContextContract) {
   const vehiculeId = params.vehicule_id;
 
-  console.log("vehicule_id" ,vehiculeId)
-  console.log('params' ,params);
+  // console.log("vehicule_id" ,vehiculeId)
+  // console.log('params' ,params);
   const pricing = await Pricing.query()
     .where('vehicle_id', vehiculeId)
     .first();
@@ -174,7 +174,7 @@ public async show({ params, response }: HttpContextContract) {
     return response.notFound({ message: 'Aucun tarif trouvé pour ce véhicule.' });
   }
 
-  console.log("data" ,pricing)
+  // console.log("data" ,pricing)
 
   return response.json(pricing)
 
@@ -269,11 +269,11 @@ public async show({ params, response }: HttpContextContract) {
   
 
 
-    console.log("phone , password" ,phone ,password)
+    // console.log("phone , password" ,phone ,password)
     try {
       // Utilise phone comme identifiant
       const token = await auth.use('api').attempt(phone, password, {
-        expiresIn: '7days',
+        expiresIn: '30days',
       })
 
       const user = await User.query()

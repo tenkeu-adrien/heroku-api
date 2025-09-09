@@ -9,7 +9,6 @@ export default class RatingsController {
   // Créer une évaluation
   public async store({ request, response, auth }: HttpContextContract) {
     const user = auth.user!
-    console.log("user dans le controller",user)
     const validationSchema = schema.create({
       ride_id: schema.number([
         rules.exists({ table: 'rides', column: 'id' })
@@ -75,19 +74,11 @@ export default class RatingsController {
     // Récupérer l'utilisateur complet depuis la base de données
     const user = await User.query()
       .where('id', auth.user!.id)
-      .preload('givenRatings', (query) => {
-        query.preload('user')
-          .orderBy('created_at', 'desc')
-      })
-      .preload('receivedRatings', (query) => {
-        query.preload('user')
-          .orderBy('created_at', 'desc')
-      })
       .firstOrFail()
 
     return response.ok({
-      givenRatings: user.givenRatings,
-      receivedRatings: user.receivedRatings
+      givenRatings: "1.0",
+      receivedRatings: "1.0"
     })
   }
 

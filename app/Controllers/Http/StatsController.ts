@@ -35,10 +35,11 @@ export default class StatsController {
       .from('rides')
       .innerJoin('transactions', 'transactions.ride_id', 'rides.id')
       .where('rides.driver_id', driverId)
+      .where('rides.status', 'completed') 
       .where('transactions.transaction_date', '>=', startDate)
       .select(
         Database.raw('COUNT(*) as rides'),
-        Database.raw('SUM(rides.price) as earnings'), // ← CORRECTION ICI
+        Database.raw('SUM(rides.price) as earnings'), 
         Database.raw('SUM(rides.distance) as distance')
       )
       .first()

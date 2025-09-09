@@ -3,7 +3,6 @@ import Dish from 'App/Models/Dish'
 
 export default class DishesController {
   public async like({ params, response }: HttpContextContract) {
-    console.log("nous sommes dans like")
     const dish = await Dish.findOrFail(params.id)
     dish.likes++
     await dish.save()
@@ -12,10 +11,8 @@ export default class DishesController {
 
   public async dislike({ params, response }: HttpContextContract) {
     const dish = await Dish.findOrFail(params.id)
-    console.log("nous sommes dans dislike")
     dish.dislikes++
     await dish.save()
-    console.log("ok le dislike" ,dish)
     return response.ok(dish)
   }
 

@@ -10,7 +10,7 @@ import { schema, rules } from '@ioc:Adonis/Core/Validator'
 
 export default class OrdersController {
   public async store({ request, auth, response }: HttpContextContract) {
-    // console.log("ok le store" ,request.body())
+    console.log("ok le store" ,request.body())
     const orderSchema = schema.create({
       deliveryAddress: schema.string({ trim: true }, [
         rules.maxLength(255)
@@ -142,25 +142,20 @@ public async showw({ params, response }: HttpContextContract) {
 
 
 
-        console.log("query   page  limit status  ,userRole ",page ,status ,userRole)
      
       // 🔹 Filtrage par status (supporte plusieurs valeurs séparées par virgule)
       if (status) {
        
         const statuses = status.split(',')
-        console.log("status" ,status ,statuses)
         query = query.whereIn('status', statuses)
       }
       // console.log("query   page  limit status  ,userRole ",query) 
       // 🔹 Filtrage par rôle utilisateur
       if (userRole === 'client') {
-        console.log("userRole client")
         query = query.where('client_id', auth.user!.id)
       } else if (userRole === 'driver') {
-        console.log("userRole driver")
         query = query.where('driver_id', auth.user!.id)
       } else if (userRole === 'restaurant') {
-        console.log("userRole restaurant")
         query = query.where('restaurant_id', auth.user!.id)
       }
 
@@ -194,8 +189,8 @@ public async update({ params, request, response }) {
   // 👉 Si on passe en "delivering", on affecte aussi le livreur
   if (status === 'delivering' && driver_id) {
     order.driverId = driver_id 
-    await order.save()
     await order.load("driver")    
+    await order.save()
     const orderData = {
       id: order.id,
       driver_id: order.driverId, // L'ID du chauffeur attribué
@@ -236,6 +231,11 @@ public async update({ params, request, response }) {
     
     order.status = 'delivered'
     await order.save()
+    await order.load("client")
+    await order.load("driver")
+    await order.load("restaurant")
+    await order.load("items")
+    
 
     // Émettre un événement socket
      const io = Ws.io
@@ -248,7 +248,6 @@ public async update({ params, request, response }) {
   public async export({ response }: HttpContextContract) {
 
 
-    console.log("je suis dans export")
     const orders = await Order.query()
       .preload('client')
       .preload('restaurant')

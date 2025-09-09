@@ -16,7 +16,6 @@ import PromoCode from 'App/Models/PromoCode'
 export default class RidesController {
   public async index({ request,response }: HttpContextContract) {
     // const user = auth.user!
-    console.log("request per_page" ,request.params)
     const page = request.input('page', 1)
     const limit = request.input('per_page', 10)
    const user={
@@ -132,7 +131,7 @@ export default class RidesController {
     let query = Ride.query()
       .orderBy('created_at', 'desc')
       .preload('driver')
-      // .preload('client')
+      .preload('client')
 
     if (user.role === 'client') {
       query = query.where('client_id', user.id)
@@ -215,7 +214,6 @@ public async store({ request, response , auth}: HttpContextContract) {
     vehicleType = 'moto-taxi'
   }
 
-  console.log("rowData",rawData)
   const schemaRide = schema.create({
     vehicleType: schema.enum(['moto-taxi', 'tricycle'] as const),
     paymentMethod: schema.enum(['cash', 'orange_money', 'mobile_money'] as const),
@@ -246,14 +244,12 @@ public async store({ request, response , auth}: HttpContextContract) {
     vehicleType
   }
 
-  console.log("payload",payload)
   try {
     const data = await request.validate({ 
       schema: schemaRide,
       data: payload // On utilise les données modifiées pour la validation
     })
 
-    console.log("data après validation", data)
     // data.vehicleType,
     const ride = await Ride.create({
       vehicleType: data.vehicleType,
@@ -382,7 +378,6 @@ public async store({ request, response , auth}: HttpContextContract) {
   
   public  async getDriverRatings({request}) {
 const {id:driverId} = request.params("id")
-    console.log("averageQuery" ,driverId)
     const averageQuery = await Rating.query()
       .where('user_id', driverId)
       // .andWhere('ride_id', rideId)
@@ -455,7 +450,6 @@ const {id:driverId} = request.params("id")
       commission: 0,
     })
   
-    console.log("ride", ride)
     await ride.save()
   
     return response.noContent()
@@ -467,7 +461,6 @@ const {id:driverId} = request.params("id")
   // 1. Validation des données
   const user = await auth.authenticate()
 
-  console.log("params",params ,request.input("status"))
 
   const statusSchema = schema.create({
     status: schema.enum(['requested', 'accepted', 'in_progress', 'completed', 'cancelled'] as const),
@@ -533,7 +526,6 @@ const {id:driverId} = request.params("id")
           message: 'Seul le chauffeur assigné peut terminer la course.' 
         })
       }
-      console.log("completed",ride)
       ride.merge({
         status: 'completed',
         isPaid:true,
@@ -875,5 +867,46 @@ public async export({ response }: HttpContextContract) {
     return response.send({ status: 'ok', sent: messages.length })
   }
 
+
+  public async orderAvailableDrivers({ request, response }: HttpContextContract) {
+    const { ride } = request.input("")
+
+    if (!ride) {
+      return response.status(400).send({ error: 'Ride data is required' })
+    }
+// console.log("ride new" ,ride)
+
+    const tokens = await PushToken
+      .query()
+      .preload('user', q => {
+        q.where('role', 'driver')
+         .where('vehicule_type', vehicleType)
+        //  .where('is_available', true) // ton flag de connexion
+        //  .where('is_on_ride', false)  // ton flag de course
+      })
+
+    const messages: any[] = [];
+
+
+    for (const t of tokens) {
+      const pushRes = await axios.post('https://exp.host/--/api/v2/push/send', {
+        to: t.token,
+        sound: 'default',
+        title: 'Nouvelle course disponible',
+        body: 'Une nouvelle course est en attente.',
+        data: {
+          rideId: ride
+        }
+      })
+
+      messages.push({
+        token: t.token,
+        response: pushRes.data
+      })
+
+    }
+
+    return response.send({ status: 'ok', sent: messages.length })
+  }
 
 }

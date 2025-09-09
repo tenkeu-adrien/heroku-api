@@ -89,7 +89,6 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
     const rideId = params.rideId
     // On vérifie que le user est bien impliqué dans la course
     const ride = await Ride.findBy('id', rideId)
-    console.log("ride dans markMessagesAsRead",ride)
     if (!ride) {
       return response.notFound({ message: 'Course non trouvée' })
     }
@@ -107,7 +106,6 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
       .where('receiver_id', user.id)
       .where('is_read', false)
       .update({ isRead: true })
-    console.log("updatedCount",updatedCount)
     return response.ok({
       message: 'Messages marqués comme lus',
       updatedCount,
@@ -162,7 +160,6 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
     const rideId = params.rideId
     const content = request.input('content')
     // Vérifier l'accès à la conversation et le statut
-    console.log("rideId dans store" ,rideId)
     const ride = await Ride.query()
       .where('id', rideId)
       .whereIn('status', ['accepted', 'in_progress', 'completed'])
@@ -174,13 +171,10 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
         message: 'Course non trouvée ou non acceptée'
       })
     }
-  console.log("ok trouve la ride")
     // Vérification supplémentaire pour s'assurer qu'on a un receiverId valide
     const receiverId = user.role === 'client' 
       ? ride.driverId 
       : ride.clientId
-  
-      console.log("receiverId" ,receiverId)
 
     if (!receiverId) {
       return response.badRequest({
@@ -221,7 +215,6 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
     })
   }
   
-
 
 
 public async getContacts({ auth, response }: HttpContextContract) {
