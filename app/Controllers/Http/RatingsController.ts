@@ -74,11 +74,19 @@ export default class RatingsController {
     // Récupérer l'utilisateur complet depuis la base de données
     const user = await User.query()
       .where('id', auth.user!.id)
+      .preload('givenRatings', (query) => {
+        query.preload('user')
+          .orderBy('created_at', 'desc')
+      })
+      .preload('receivedRatings', (query) => {
+        query.preload('user')
+          .orderBy('created_at', 'desc')
+      })
       .firstOrFail()
 
     return response.ok({
-      givenRatings: "1.0",
-      receivedRatings: "1.0"
+      givenRatings: user.givenRatings,
+      receivedRatings: user.receivedRatings
     })
   }
 
