@@ -10,6 +10,8 @@ export const OrderFactory = Factory
       totalPrice: parseFloat(faker.commerce.price({ min: 500, max: 5000, dec: 0 })),
       clientId: faker.number.int({ min: 1, max: 10 }),
       restaurantId: faker.number.int({ min: 1, max: 10 }),
+      isPaid: faker.datatype.boolean(),
+      driverId: faker.number.int({ min: 1, max: 10 }),
     }
   })
   .relation('client', () => UserFactory)

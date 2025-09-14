@@ -129,12 +129,11 @@ export default class UsersController {
     return response.ok(user)
 }
 
-  public async destroy({ auth, response }: HttpContextContract) {
-    const user = auth.user!
-    const userr = await User.findOrFail(user.id)
-    userr.isDeleted =true 
+  public async destroy({ params, response }: HttpContextContract) {
+    let user = await User.findOrFail(params.id)
+    user.isDeleted =true 
     let userDelete = await user.save()
-
+console.log(userDelete ,"userDelete")
     // return response.noContent()
     return   response.send({success:true , userDelete  ,message:"user delete succefully"})
   }
@@ -335,7 +334,7 @@ public async store({ auth, request }: HttpContextContract) {
 public async export({ response }: HttpContextContract) {
   const users = await User.all()
 
-  console.log("users export")
+  // console.log("users export")
   const workbook = new ExcelJS.Workbook()
   const worksheet = workbook.addWorksheet('Users')
 
@@ -371,7 +370,7 @@ public async getDriver({response}:HttpContextContract){
   const users =  await User.query().where('role', 'driver')
         .andWhere('vehicule_type', 'moto-taxi')
 
-   console.log("users" ,users)
+  //  console.log("users" ,users)
    return   response.send({success:true , data:users  ,message:"driver get succefully"})
 }
 

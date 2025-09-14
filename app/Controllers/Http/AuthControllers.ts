@@ -24,7 +24,7 @@ export default class AuthController {
     phone: schema.string(), // ou autres règles si nécessaire
     password: schema.string()
   })
-  
+
 
   /**
    * Inscription utilisateur
@@ -48,9 +48,7 @@ public async register({ request, response, auth }: HttpContextContract) {
       jointe: payload.jointe || undefined, // URL du document depuis Firebase
     })
 
-    const token = await auth.use('api').generate(user, {
-      expiresIn: '30days',
-    })
+    const token = await auth.use('api').generate(user)
 
     return response.created({
       user: user.serialize(),
@@ -266,19 +264,14 @@ public async show({ params, response }: HttpContextContract) {
    */
   public async login({ request, response, auth }: HttpContextContract) {
     const { phone, password } = await request.validate({ schema: this.loginSchema })
-  
-
-
     // console.log("phone , password" ,phone ,password)
     try {
       // Utilise phone comme identifiant
-      const token = await auth.use('api').attempt(phone, password, {
-        expiresIn: '30days',
-      })
+      const token = await auth.use('api').attempt(phone, password)
 
       const user = await User.query()
         .where('phone', phone)
-        .where('is_deleted' ,false)
+        .where('isDeleted' , false)
         .firstOrFail()
   
       return response.ok({

@@ -16,6 +16,9 @@ export default class Order extends BaseModel {
   public driverId: number
 
   @column()
+  public isPaid: boolean
+
+  @column()
   public restaurantId: number | null
 
   @column()

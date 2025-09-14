@@ -185,33 +185,36 @@ public async update({ params, request, response }) {
   const { status, driver_id } = request.only(['status', 'driver_id'])
 
   order.status = status
-
+  order.save()
   // 👉 Si on passe en "delivering", on affecte aussi le livreur
   if (status === 'delivering' && driver_id) {
     order.driverId = driver_id 
     await order.load("driver")    
     await order.save()
-    const orderData = {
-      id: order.id,
-      driver_id: order.driverId, // L'ID du chauffeur attribué
-      // total_amount: order.totalPrice,
-      // restaurant_name: order.restaurant.name,
-      // payment_method: order.paymentMethod,
-      // delivery_address: order.deliveryAddress,
-      // status: order.status,
+    // const orderData = {
+    //   id: order.id,
+    //   driver_id: order.driverId, // L'ID du chauffeur attribué
+    //   // total_amount: order.totalPrice,
+    //   // restaurant_name: order.restaurant.name,
+    //   // payment_method: order.paymentMethod,
+    //   // delivery_address: order.deliveryAddress,
+    //   // status: order.status,
       
-    };
+    // };
   
-    io.emit('order:new', orderData);  
+    io.emit('order:new', order);  
+    io.emit('order:status', order)
   }
 
 
   if(status === 'delivered'){
+    console.log("je suis")
     await order.load("client")
     await order.load("driver")
     await order.load("restaurant")
     await order.load("items")
     io.emit('order:delivered', order);  
+    io.emit('order:status', order)
   }
  
 
@@ -220,7 +223,7 @@ public async update({ params, request, response }) {
   // Émettre à tous les chauffeurs (broadcast)
   
   // Émettre un événement socket pour la mise à jour
-  
+  io.emit('order:status', order)
 
   return response.json(order)
 }
@@ -230,6 +233,7 @@ public async update({ params, request, response }) {
     const order = await Order.findOrFail(params.id)
     
     order.status = 'delivered'
+    order.isPaid=true
     await order.save()
     await order.load("client")
     await order.load("driver")
@@ -240,7 +244,7 @@ public async update({ params, request, response }) {
     // Émettre un événement socket
      const io = Ws.io
     io.emit('order:delivered', order)
-
+    io.emit('order:status', order)
     return response.json(order)
   }
 
@@ -313,6 +317,34 @@ public async update({ params, request, response }) {
     }
   }
 
+ public async cancel({params, response }: HttpContextContract) {
+
+
+     const io = Ws.io
+     
+    const ride = await Order.findOrFail(params.id)
+      if (ride.status === 'cancelled') {
+        return response.badRequest({ success:false, message: 'Cette course est déjà annulée.' })
+      }
+     
+      // Peut annuler si pending ou accepted
+      ride.status = 'cancelled'
+     
+
+      io.emit('order:cancel',ride)
+      await ride.load("client")
+      await ride.load("driver")
+      await ride.load("restaurant")
+      await ride.load("items")
+      await ride.save()
+      return response.ok({ success:true, message: 'order annulée.', ride })
+    }
+
+    // Chauffeur ne peut pas annuler (selon vos nouvelles exigences)
+  
+
+    // return response.badRequest({ success:false, message: 'Annulation non autorisée pour ce rôle.' })
+  // }
 
 
 }

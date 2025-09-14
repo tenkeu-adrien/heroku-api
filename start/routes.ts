@@ -43,7 +43,7 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   // Route.get('/users/:id', 'UsersController.indexx')
   Route.get('/dashboard/financial-stats', 'AuthControllers.financialStats')
   Route.get('/users/show/:id', 'UsersController.show')
-  Route.patch('/users/delete', 'UsersController.destroy').middleware('auth')
+  Route.patch('/users/delete/:id', 'UsersController.destroy')
   Route.patch('/users/update/:id', 'UsersController.updated')
   Route.post('/users/:user_id/promo-codes', 'UsersController.promo')
   Route.post('/users/:id/fcm-token', 'UsersController.updateFcmToken')
@@ -136,10 +136,8 @@ Route.post('/drivers/available-notify', 'RidesController.notifyAvailableDrivers'
 Route.post('/notifications/token', 'UsersController.store').middleware('auth');
 
     Route.get('/rides/revenue-stats', 'RidesController.revenueStats');
-Route.get('/rides/payment-distribution', 'RidesController.paymentDistribution');
-
+    Route.get('/rides/payment-distribution', 'RidesController.paymentDistribution');
      Route.group(() => { Route.get('/mee', 'AuthControllers.me').middleware('auth')
-
     Route.get('/orders/current', 'OrdersController.current')
     Route.patch('/orders/:id/cancel', 'OrdersController.cancel')
     Route.patch("orders/:id" ,'OrdersController.update')
