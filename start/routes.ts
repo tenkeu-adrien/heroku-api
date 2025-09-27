@@ -58,7 +58,7 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
     // Récupérer la promo active d'un utilisateur spécifique
     Route.get('/users/:id/rides-stats', 'RidesController.getUserRidesStats').middleware('auth');
     Route.get('/:id/active-promo', 'UsersController.getActivePromo')
-  Route.post('/refresh', 'AuthControllers.refresh').middleware('auth')
+  Route.post('/refresh/:id', 'AuthControllers.refresh')
   Route.post('/forgot-password', 'AuthControllers.forgotPassword')
   Route.post('/reset-password', 'AuthControllers.resetPassword')
   // Route.get('/restaurants', 'RestaurantsController.index')
@@ -73,7 +73,7 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   Route.get('/dish/:id', 'OrdersController.showw').middleware('auth')
   Route.get("/orderss" , 'OrdersController.indexx').middleware('auth')
   Route.post('/ratings', 'RatingsController.store').middleware('auth')
-
+  Route.post('/ratingss', 'RatingsController.storee').middleware('auth')
   Route.get('/orders/:id', 'OrdersController.show')
   // Route.get('/orders/export', 'OrdersController.export')
   Route.patch('/orders/:id/delivered', 'OrdersController.markAsDelivered')
@@ -101,6 +101,7 @@ Route.group(() => {
 
   Route.get('/rides/:rideId/messages', 'MessagesController.indexx')
   Route.post('/rides/:rideId/messages', 'MessagesController.storee')
+  Route.post('/orders/:order_id/messages', 'MessagesController.createMessageOrder')
   Route.patch('/rides/:rideId/messages/read', 'MessagesController.markMessagesAsRead')
 }).prefix('/api/v1').middleware('auth')
 
@@ -131,6 +132,7 @@ Route.group(() => {
 
 
 Route.post('/drivers/available-notify', 'RidesController.notifyAvailableDrivers')
+Route.patch('/notify/:id', 'RidesController.notify')
 
 // start/routes.ts
 Route.post('/notifications/token', 'UsersController.store').middleware('auth');

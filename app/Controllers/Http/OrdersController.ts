@@ -7,6 +7,7 @@ import Ws from 'App/Services/Ws'
 import { DateTime } from 'luxon'
 import ExcelJS from 'exceljs'
 import { schema, rules } from '@ioc:Adonis/Core/Validator'
+import NotificationService from 'App/Services/NotificationService'
 
 export default class OrdersController {
   public async store({ request, auth, response }: HttpContextContract) {
@@ -26,7 +27,7 @@ export default class OrdersController {
     })
 
     const payload = await request.validate({ schema: orderSchema })
-    console.log("ok le payload" ,payload)
+    // console.log("ok le payload" ,payload)
     const trx = await Database.transaction()
 
     try {
@@ -175,58 +176,272 @@ public async showw({ params, response }: HttpContextContract) {
 
 
 
-
-
-
-
-public async update({ params, request, response }) {
-  const order = await Order.findOrFail(params.id)
-  const io = Ws.io
-  const { status, driver_id } = request.only(['status', 'driver_id'])
-
-  order.status = status
-  order.save()
-  // 👉 Si on passe en "delivering", on affecte aussi le livreur
-  if (status === 'delivering' && driver_id) {
-    order.driverId = driver_id 
-    await order.load("driver")    
-    await order.save()
-    // const orderData = {
-    //   id: order.id,
-    //   driver_id: order.driverId, // L'ID du chauffeur attribué
-    //   // total_amount: order.totalPrice,
-    //   // restaurant_name: order.restaurant.name,
-    //   // payment_method: order.paymentMethod,
-    //   // delivery_address: order.deliveryAddress,
-    //   // status: order.status,
-      
-    // };
+  public async update({ params, request, response }) {
+    const order = await Order.findOrFail(params.id)
+    const io = Ws.io
+    const { status, driver_id } = request.only(['status', 'driver_id'])
   
-    io.emit('order:new', order);  
+    // Sauvegarder le statut précédent pour comparaison
+    const previousStatus = order.status
+    order.status = status
+  
+    // 👉 Si on passe en "delivering", on affecte aussi le livreur
+    if (status === 'delivering' && driver_id) {
+      order.driverId = driver_id 
+      await order.load("driver")
+    }
+  
+    await order.save()
+  
+    // Émettre l'événement socket global
     io.emit('order:status', order)
+  
+    // Gestion spécifique par statut avec switch case
+    switch (status) {
+      case 'delivering':
+        await this.handleDeliveringStatus(order, io, previousStatus)
+        break
+  
+      case 'delivered':
+        await this.handleDeliveredStatus(order, io)
+        break
+  
+      case 'preparing':
+        await this.handlePreparingStatus(order)
+        break
+  
+      case 'cancelled':
+        await this.handleCancelledStatus(order)
+        break
+  
+      case 'pending':
+        await this.handlePendingStatus(order)
+        break
+  
+      default:
+        // Pour les autres statuts, émettre une notification générique
+        await NotificationService.sendToUser(
+          order.clientId,
+          'Statut de commande mis à jour',
+          `Votre commande est maintenant ${status}`,
+          {
+            orderId: order.id,
+            status: order.status,
+            type: 'status_update'
+          }
+        )
+        break
+    }
+  
+    return response.json(order)
   }
+  
+  // ==================== MÉTHODES HELPER POUR CHAQUE STATUT ====================
+  
+  private async handleDeliveringStatus(order: Order, io: any, previousStatus: string) {
+    // Éviter les notifications doubles si le statut était déjà "delivering"
+    if (previousStatus !== 'delivering') {
+      // Émettre l'événement socket pour nouvelle commande
+      io.emit('order:new', order)
+  
+      // Notification au CLIENT
+      await NotificationService.sendToUser(
+        order.clientId,
+        '🎉 Votre commande est en route !',
+        `Notre livreur est en chemin avec votre commande. Préparation de ${order.totalPrice} FCFA.`,
+        {
+          orderId: order.id,
+          status: 'delivering',
+          driverId: order.driverId,
+          amount: order.totalPrice,
+          type: 'order_delivering',
+          redirectTo: 'orders', // ou 'rides', 'orders', etc.
+        }
+      )
+  
+      // Notification au DRIVER (si un driver est assigné)
+      if (order.driverId) {
+        await NotificationService.sendToUser(
+          order.driverId,
+          '📦 Nouvelle livraison assignée',
+          `Vous avez une nouvelle livraison à ${order.deliveryAddress}.`,
+          {
+            orderId: order.id,
+            status: 'delivering',
+            deliveryAddress: order.deliveryAddress,
+            type: 'driver_assignment',
+            redirectTo: 'orders', // ou 'rides', 'orders', etc.
 
-
-  if(status === 'delivered'){
-    console.log("je suis")
+          }
+        )
+      }
+  
+      // Notification au RESTAURANT (charger la relation si nécessaire)
+      await order.load('restaurant')
+      // if (order.restaurant) {
+      //   await NotificationService.sendToUser(
+      //     order.restaurant.userId, // Supposant que restaurant a un userId
+      //     '✅ Commande en livraison',
+      //     `La commande #${order.id} a été prise en charge par le livreur.`,
+      //     {
+      //       orderId: order.id,
+      //       status: 'delivering',
+      //       type: 'restaurant_notification'
+      //     }
+      //   )
+      // }
+    }
+  }
+  
+  private async handleDeliveredStatus(order: Order, io: any) {
+    // Charger toutes les relations nécessaires
     await order.load("client")
     await order.load("driver")
     await order.load("restaurant")
     await order.load("items")
-    io.emit('order:delivered', order);  
-    io.emit('order:status', order)
+  
+    // Émettre l'événement socket
+    io.emit('order:delivered', order)
+  
+    // Notification au CLIENT
+    await NotificationService.sendToUser(
+      order.clientId,
+      '✅ Livraison réussie !',
+      `Votre commande a été livrée avec succès. Merci pour votre confiance !`,
+      {
+        orderId: order.id,
+        status: 'delivered',
+        amount: order.totalPrice,
+        type: 'order_delivered',
+        redirectTo: 'orders', // ou 'rides', 'orders', etc.
+
+      }
+    )
+  
+    // Notification au DRIVER
+    if (order.driverId) {
+      await NotificationService.sendToUser(
+        order.driverId,
+        '🎯 Livraison complétée',
+        `Vous avez livré la commande #${order.id} avec succès.`,
+        {
+          orderId: order.id,
+          status: 'delivered',
+          deliveryAddress: order.deliveryAddress,
+          type: 'delivery_completed',
+          redirectTo: 'orders', // ou 'rides', 'orders', etc.
+
+        }
+      )
+    }
+  
+    // Notification au RESTAURANT
+    if (order.restaurant) {
+      // await NotificationService.sendToUser(
+      //   order.restaurant.userId,
+      //   '🏁 Commande livrée',
+      //   `La commande #${order.id} a été livrée au client.`,
+      //   {
+      //     orderId: order.id,
+      //     status: 'delivered',
+      //     type: 'restaurant_delivery_complete'
+      //   }
+      // )
+    }
   }
- 
-
-
   
-  // Émettre à tous les chauffeurs (broadcast)
-  
-  // Émettre un événement socket pour la mise à jour
-  io.emit('order:status', order)
+  private async handlePreparingStatus(order: Order) {
+    // Notification au CLIENT
+    await NotificationService.sendToUser(
+      order.clientId,
+      '👨‍🍳 Commande en préparation',
+      `Votre commande est en cours de préparation. Livraison prévue bientôt !`,
+      {
+        orderId: order.id,
+        status: 'preparing',
+        type: 'order_preparing',
+        redirectTo: 'orders', // ou 'rides', 'orders', etc.
 
-  return response.json(order)
-}
+      }
+    )
+  
+    // Notification au RESTAURANT
+    await order.load('restaurant')
+    // if (order.restaurant) {
+    //   await NotificationService.sendToUser(
+    //     order.restaurant.userId,
+    //     '🛒 Nouvelle commande à préparer',
+    //     `Nouvelle commande #${order.id} à préparer.`,
+    //     {
+    //       orderId: order.id,
+    //       status: 'preparing',
+    //       type: 'new_order_restaurant'
+    //     }
+    //   )
+    // }
+  }
+  
+  private async handleCancelledStatus(order: Order) {
+    // Notification au CLIENT
+    await NotificationService.sendToUser(
+      order.clientId,
+      '❌ Commande annulée',
+      `Votre commande #${order.id} a été annulée.`,
+      {
+        orderId: order.id,
+        status: 'cancelled',
+        type: 'order_cancelled',
+        redirectTo: 'orders', // ou 'rides', 'orders', etc.
+
+      }
+    )
+  
+    // Notifications aux autres parties concernées
+    await order.load('restaurant')
+    // if (order.restaurant) {
+    //   await NotificationService.sendToUser(
+    //     order.restaurant.userId,
+    //     '⚠️ Commande annulée',
+    //     `La commande #${order.id} a été annulée.`,
+    //     {
+    //       orderId: order.id,
+    //       status: 'cancelled',
+    //       type: 'order_cancelled_restaurant'
+    //     }
+    //   )
+    // }
+  
+    if (order.driverId) {
+      await NotificationService.sendToUser(
+        order.driverId,
+        '🚫 Livraison annulée',
+        `La livraison #${order.id} a été annulée.`,
+        {
+          orderId: order.id,
+          status: 'cancelled',
+          type: 'delivery_cancelled',
+          redirectTo: 'orders', // ou 'rides', 'orders', etc.
+
+        }
+      )
+    }
+  }
+  
+  private async handlePendingStatus(order: Order) {
+    // Notification au CLIENT
+    await NotificationService.sendToUser(
+      order.clientId,
+      '⏳ Commande en attente',
+      `Votre commande #${order.id} est en attente de traitement.`,
+      {
+        orderId: order.id,
+        status: 'pending',
+        type: 'order_pending',
+        redirectTo: 'orders', // ou 'rides', 'orders', etc.
+
+      }
+    )
+  }
 
 
   public async markAsDelivered({ params, response }) {
@@ -245,6 +460,19 @@ public async update({ params, request, response }) {
      const io = Ws.io
     io.emit('order:delivered', order)
     io.emit('order:status', order)
+
+    await NotificationService.sendToUser(
+      order.clientId,
+      ' Nouvelle commande  ',
+      `Une commande est terminée`,
+      {
+        rideId: order.id,
+        // vehicleType: order.vehicleType,
+        pickupLocation: order.deliveryAddress,
+        price: order.totalPrice,
+      },
+      // ride.vehicleType
+    );
     return response.json(order)
   }
 

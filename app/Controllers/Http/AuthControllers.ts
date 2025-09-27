@@ -8,21 +8,21 @@ import Ride from 'App/Models/Ride'
 export default class AuthController {
   // Schema de validation pour l'inscription
   private registerSchema = schema.create({
-    firstName: schema.string(),
-    password: schema.string(),
-    phone: schema.string(),
+    firstName: schema.string({trim:true}),
+    password: schema.string({trim:true}),
+    phone: schema.string({trim:true}),
     role: schema.enum(['client', 'driver', 'deliverer' ,'manager' ,'admin'] as const),
-    vehiculeType: schema.string.optional(),
-  matricule: schema.string.optional(),
+    vehiculeType: schema.string.optional({trim:true}),
+  matricule: schema.string.optional({trim:true}),
   avatar: schema.string.optional(), // Maintenant un string (URL)
   jointe: schema.string.optional(), // Maintenant un string (URL)
-  driverType: schema.string.optional(),
+  driverType: schema.string.optional({trim:true}),
   })
 
   // Schema de validation pour la connexion
   private loginSchema =schema.create({
-    phone: schema.string(), // ou autres règles si nécessaire
-    password: schema.string()
+    phone: schema.string({trim:true}), // ou autres règles si nécessaire
+    password: schema.string({trim:true})
   })
 
 
@@ -315,20 +315,58 @@ public async show({ params, response }: HttpContextContract) {
   matricule: schema.string.optional()
    * Rafraîchir le token
    */
-  public async refresh({ auth, response }: HttpContextContract) {
-    const user = auth.user!
+  public async refreshh({ auth, response ,params }: HttpContextContract) {
+    const {id} = params
+    const user = await User.findOrFail(id)
     await auth.use('api').revoke()
 
-    const token = await auth.use('api').generate(user, {
-      expiresIn: '7days',
-    })
-
+    const token = await auth.use('api').generate(user)
+console.log("token" ,token)
     return response.ok({
-      user: user.serialize(),
-      token,
+      user: token.user,
+      token: token.token,
     })
   }
 
+
+
+  public async refresh({ auth, response, params }: HttpContextContract) {
+    try {
+      const { id } = params;
+      
+      // 1. Trouver l'utilisateur avec vérification de is_deleted
+      const user = await User.findOrFail(id);
+      
+      // 2. Vérifier si l'utilisateur n'est pas supprimé
+      if (user.isDeleted == true) {
+        return response.unauthorized({
+          message: 'Compte utilisateur supprimé'
+        });
+      }
+  
+      // 4. Générer un nouveau token
+      // const token = await auth.use('api').generate(user);
+      
+      // console.log("token", token);
+  
+      return response.ok({
+        user: user,
+        // token: token.token,
+      });
+      
+    } catch (error) {
+      if (error.code === 'E_ROW_NOT_FOUND') {
+        return response.notFound({
+          message: 'Utilisateur non trouvé'
+        });
+      }
+      
+      console.error('Erreur lors du refresh:', error);
+      return response.internalServerError({
+        message: 'Erreur lors du rafraîchissement du token'
+      });
+    }
+  }
   /**
    * Envoyer un email de réinitialisation
    */

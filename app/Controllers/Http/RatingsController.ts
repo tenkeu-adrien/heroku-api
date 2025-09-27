@@ -4,6 +4,7 @@ import Rating from 'App/Models/Rating'
 import { schema, rules } from '@ioc:Adonis/Core/Validator'
 import Ride from 'App/Models/Ride'
 import User from 'App/Models/User'
+import Order from 'App/Models/Order'
 
 export default class RatingsController {
   // Créer une évaluation
@@ -17,13 +18,11 @@ export default class RatingsController {
         rules.range(0, 5)
       ]),
       comment: schema.string.optional({ trim: true }),
-      // is_driver_rating: schema.boolean()
     })
 
     const data = await request.validate({
       schema: validationSchema,
       messages: {
-        'ride_id.exists': 'La course spécifiée n\'existe pas',
         'rating.range': 'La note doit être entre 0 et 5'
       }
     })
@@ -32,16 +31,45 @@ export default class RatingsController {
     // const user = auth.user!
 
     const rating = await Rating.create({
-      rideId: data.ride_id,
-      userId: ride.clientId,
+      userId: ride.driverId,
       rating: data.rating,
       comment: data.comment,
-      // isDriverRating: data.is_driver_rating,
     })
 
     return response.created(rating)
   }
 
+
+  public async storee({ request, response, auth }: HttpContextContract) {
+    const user = auth.user!
+    const validationSchema = schema.create({
+      ride_id: schema.number([
+        rules.exists({ table: 'rides', column: 'id' })
+      ]),
+      rating: schema.number([
+        rules.range(0, 5)
+      ]),
+      comment: schema.string.optional({ trim: true }),
+    })
+
+    const data = await request.validate({
+      schema: validationSchema,
+      messages: {
+        'rating.range': 'La note doit être entre 0 et 5'
+      }
+    })
+
+    const order = await Order.findOrFail(data.ride_id)
+    // const user = auth.user!
+
+    const rating = await Rating.create({
+      userId: order.driverId,
+      rating: data.rating,
+      comment: data.comment,
+    })
+
+    return response.created(rating)
+  }
   // Lister les évaluations d'un utilisateur
   public async index({ request, response }: HttpContextContract) {
     const { user_id} = request.qs()

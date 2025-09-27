@@ -311,7 +311,7 @@ export default class RestaurantsController {
   
       // Convertir le tableau d'images en JSON
       const imagesJson = JSON.stringify(payload.images)
-      console.log("Image  ",imagesJson)
+      // console.log("Image  ",imagesJson)
   
       // Mettre à jour le plat
       dish.merge({
@@ -374,7 +374,7 @@ export default class RestaurantsController {
         images: imagesJson 
       })
 
-      console.log("dish" ,dish)
+      // console.log("dish" ,dish)
       return response.created({
         message: "Plat ajouté avec succès",
         data: dish

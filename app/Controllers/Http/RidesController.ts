@@ -1,3 +1,4 @@
+import  NotificationService  from 'App/Services/NotificationService';
 // app/Controllers/Http/RidesController.ts
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import Ride from 'App/Models/Ride'
@@ -6,7 +7,7 @@ import { DateTime } from 'luxon'
 import Database from '@ioc:Adonis/Lucid/Database'
 import Ws from 'App/Services/Ws'
 import ExcelJS from 'exceljs'
-import NotificationService from 'App/Services/NotificationService'
+// import NotificationService from 'App/Services/NotificationService'
 import PushToken from 'App/Models/PushToken'
 import axios from 'axios'
 import User from 'App/Models/User'
@@ -244,6 +245,7 @@ public async store({ request, response , auth}: HttpContextContract) {
     vehicleType
   }
 
+
   try {
     const data = await request.validate({ 
       schema: schemaRide,
@@ -273,6 +275,34 @@ public async store({ request, response , auth}: HttpContextContract) {
 //   'Une nouvelle course est en attente.',
 //   { rideId: ride}
 // );
+
+ await NotificationService.sendToDrivers(
+        'Nouvelle course disponible 🚨',
+        `Nouveau trajet demandé : de ${data.pickupLocation.address} à ${data.destinationLocation.address}. Acceptez ?`,
+        {
+          rideId: ride.id,
+          vehicleType: ride.vehicleType,
+          pickupLocation: ride.pickupLocation,
+          price: ride.price,
+          redirectTo: 'rides', // ou 'rides', 'orders', etc.
+
+        },
+        // data.vehicleType
+      );
+
+
+ // if (order.restaurant) {
+      //   await NotificationService.sendToUser(
+      //     order.restaurant.userId, // Supposant que restaurant a un userId
+      //     '✅ Commande en livraison',
+      //     `La commande #${order.id} a été prise en charge par le livreur.`,
+      //     {
+      //       orderId: order.id,
+      //       status: 'delivering',
+      //       type: 'restaurant_notification'
+      //     }
+      //   )store
+      // }
 
     const io = Ws.io
     io.emit('ride:new', {
@@ -375,6 +405,30 @@ public async store({ request, response , auth}: HttpContextContract) {
       });
     }
   }
+
+
+  public async notify({ params, response }: HttpContextContract) {
+    const { id } = params
+    const ride = await Ride.findOrFail(id)
+    console.log("ride id " ,id)
+    await ride.load('driver')
+    await ride.load('client')
+    ride.save()
+    console.log("ride dans le notify" ,ride.client.id)
+    await NotificationService.sendToUser(
+      ride.client.id,
+      'Votre chauffeur est arrivé 📍',
+      `${ride.driver.firstName} vous attend à l’adresse indiquée. Merci d’être prêt(e).`,
+      {
+        rideId: ride.id,
+        status: 'completed',
+        amount: ride.price,
+        type: 'ride_completed'
+      }
+    )
+    return response.noContent()
+  }
+  
   
   public  async getDriverRatings({request}) {
 const {id:driverId} = request.params("id")
@@ -383,6 +437,7 @@ const {id:driverId} = request.params("id")
       // .andWhere('ride_id', rideId)
       .avg('rating as avg')
       .first()
+// console.log("averageQuery" ,averageQuery)
   
   
     const averageRating = averageQuery?.$extras.avg ? parseFloat(averageQuery.$extras.avg).toFixed(1) : '0.0'
@@ -393,7 +448,7 @@ const {id:driverId} = request.params("id")
       .select(['rating', 'comment', 'created_at'])
       .orderBy('created_at', 'desc')
       .limit(10) // pour éviter d'envoyer trop de data, on limite aux 10 derniers
-  
+console.log("ratings" ,ratings)
     return {
       averageRating,
       ratings,
@@ -403,8 +458,7 @@ const {id:driverId} = request.params("id")
 
 
   public async complete({ params, response, auth }: HttpContextContract) {
-    // console.log("params dans complete", params)
-  
+    
     if (auth.user?.role !== 'driver') {
       return response.unauthorized({
         success: false,
@@ -432,11 +486,12 @@ const {id:driverId} = request.params("id")
   
         // Incrémenter usedCount
         promo.usedCount = (promo.usedCount || 0) + 1
-  
+        // complete
         // Désactiver le code promo si plus de trajets restants
         if (promo.ridesCount <= 0) {
           promo.isActive = false
         }
+         
   
         await promo.save()
       }
@@ -450,165 +505,286 @@ const {id:driverId} = request.params("id")
       commission: 0,
     })
   
+    ride.load('driver')
+    ride.load('client')
     await ride.save()
   
+    const io = Ws.io
+
+    io.to(`ride_${ride.id}`).emit('ride:complete',ride)
+
+// console.log("course confirmer ride" ,ride)
+     await NotificationService.sendToUser(
+        ride.clientId,
+        'Merci pour votre course ! 🙌',
+        ` Comment s’est passée la course avec ${ride.driver.firstName} ? Laissez une note ou un commentaire.`,
+        {
+          rideId: ride.id,
+          vehicleType: ride.vehicleType,
+          pickupLocation: ride.pickupLocation,
+          price: ride.price,
+          redirectTo: 'rides', // ou 'rides', 'orders', etc.
+
+        },
+        // ride.vehicleType
+      );
     return response.noContent()
   }
   
 
 
- public async updateStatus({ params, request, auth, response }: HttpContextContract) {
-  // 1. Validation des données
-  const user = await auth.authenticate()
-
-
-  const statusSchema = schema.create({
-    status: schema.enum(['requested', 'accepted', 'in_progress', 'completed', 'cancelled'] as const),
-    driver_latitude: schema.string.optional(),
-    driver_longitude: schema.string.optional(),
-  })
-
-  const payload = await request.validate({ schema: statusSchema })
-  const { status ,driver_latitude,driver_longitude} = payload
-
-
-  // 2. Récupération de la course
-  const ride = await Ride.findOrFail(params.id)
-  // 3. Vérification si le statut est déjà 'accepted'
-  if (status === 'accepted' && ride.status === 'accepted') {
-    return response.conflict({ 
-      success: false,
-      message: 'Cette course a déjà été acceptée par un autre chauffeur.' 
-    })
-  }
-
-  // 4. Authentification
- 
-  // 5. Gestion des statuts
-  switch (status) {
-    case 'accepted':
-      // Vérification du rôle
-      if (user.role !== 'driver') {
-        return response.unauthorized({ 
+  public async updateStatus({ params, request, auth, response }: HttpContextContract) {
+    try {
+      // 1. Authentification et validation
+      const user = await auth.authenticate()
+      
+      const statusSchema = schema.create({
+        status: schema.enum(['requested', 'accepted', 'in_progress', 'completed', 'cancelled'] as const),
+        driver_latitude: schema.string.optional(),
+        driver_longitude: schema.string.optional(),
+      })
+  
+      const payload = await request.validate({ schema: statusSchema })
+      const { status, driver_latitude, driver_longitude } = payload
+  
+      // 2. Récupération et vérification de la course
+      const ride = await Ride.findOrFail(params.id)
+      
+      // Vérification statut déjà accepté
+      if (status === 'accepted' && ride.status === 'accepted') {
+        return response.conflict({ 
           success: false,
-          message: 'Seuls les chauffeurs peuvent accepter des courses.' 
+          message: 'Cette course a déjà été acceptée par un autre chauffeur.' 
         })
       }
-
-      // Mise à jour des informations
-      ride.merge({
-        driverId: user.id,
-        status: 'accepted',
-        startedAt: DateTime.now(),
-        driverLatitude: driver_latitude || undefined,
-        driverLongitude: driver_longitude || undefined,
-        lastPositionUpdate: DateTime.now(),
-        updatedAt: DateTime.now()
+  
+      // 3. Gestion des transitions de statut
+      const updateResult = await this.handleStatusTransition(ride, status, user, {
+        driver_latitude,
+        driver_longitude
       })
-
+  
+      if (!updateResult.success) {
+        return response[updateResult.statusCode]({
+          success: false,
+          message: updateResult.message
+        })
+      }
+      await ride.load('driver')
+      // 4. Sauvegarde et chargement des relations
       await ride.save()
-      break
-
-    case 'in_progress':
-      if (user.role !== 'driver' || ride.driverId !== user.id) {
-        return response.unauthorized({ 
-          success: false,
-          message: 'Seul le chauffeur assigné peut démarrer la course.' 
-        })
-      }
-      ride.status = 'in_progress'
-      break
-
-    case 'completed':
-      if (user.role != 'driver' || ride.driverId != user.id) {
-        return response.unauthorized({ 
-          success: false,
-          message: 'Seul le chauffeur assigné peut terminer la course.' 
-        })
-      }
-      ride.merge({
-        status: 'completed',
-        isPaid:true,
-        completedAt: DateTime.now(),
-        updatedAt: DateTime.now()
-      })
-
-    
-      await ride.save()
-      break
-
-    case 'cancelled':
-      return response.badRequest({ 
-        success: false,
-        message: 'Veuillez utiliser la route dédiée pour annuler une course.' 
-      })
-
-    case 'requested':
-      return response.badRequest({ 
-        success: false,
-        message: 'Impossible de réinitialiser le statut d\'une course.' 
-      })
-  }
-
-  // 6. Sauvegarde de la course
-   await ride.load('driver')
-
-
-await ride.save()
-  // 7. Envoi de notification et mise à jour en temps réel
-  if (status === 'accepted') {
-    // Récupération des infos complètes du chauffeur
-    const driver = await User.query()
-      .where('id', user?.id)
-      .select(['id', 'first_name', 'phone', 'vehicule_type'])
-      .firstOrFail()
-
-    // Envoi de notification
-    await NotificationService.sendToUser(
-      ride.clientId,
-      'Course acceptée',
-      `Le chauffeur ${driver.firstName} a accepté votre course.`,
-      { rideId: ride.id }
-    )
-    // Émission socket.io
-    const io = Ws.io
-    io.to(`ride_${ride.id}`).emit('ride:accepted', {
-      rideId: ride.id,
-      driverInfo: {
-        id: ride.driver.id,
-        first_name: ride.driver.firstName,
-        vehicule_type: ride.driver.vehiculeType,
-        phone: ride.driver.phone
-      },
-      driverPosition: {
-        latitude: ride.driverLatitude,
-        longitude: ride.driverLongitude
-      }
      
-    })
-
-  } else {
-    // Émission standard pour les autres statuts
-    Ws.io.to(`ride_${ride.id}`).emit('ride:status', {
-      rideId: ride.id,
-      status: ride.status
-    })
-  }
-
-  // 8. Réponse API
-  return response.ok({ 
-    success: true,
-    message: `Statut de la course mis à jour: ${status}`,
-    data: {
-      ride: ride.serialize(),
-      driverInfo: status === 'accepted' ? {
-        name: user.firstName,
-        rating: user.averageRating,
-        vehicle: user.vehiculeType
-      } : undefined
+  
+      // 5. Notifications et événements temps réel
+      await this.handleStatusNotifications(ride, status, user)
+  
+      // 6. Réponse API
+      return response.ok({ 
+        success: true,
+        message: `Statut de la course mis à jour: ${status}`,
+        data: {
+          ride: ride.serialize(),
+          driverInfo: status === 'accepted' ? {
+            name: user.firstName,
+            rating: user.averageRating,
+            vehicle: user.vehiculeType
+          } : undefined
+        }
+      })
+  
+    } catch (error) {
+      console.error('Error updating ride status:', error)
+      return response.internalServerError({ 
+        success: false,
+        message: 'Erreur lors de la mise à jour du statut'
+      })
     }
-  })
-}
+  }
+  
+  // ==================== MÉTHODES HELPER ====================
+  
+  private async handleStatusTransition(ride: Ride, status: string, user: User, location?: { 
+    driver_latitude?: string, 
+    driver_longitude?: string 
+  }) {
+    switch (status) {
+      case 'accepted':
+        return this.handleAcceptedStatus(ride, user, location)
+      
+      case 'in_progress':
+        return this.handleInProgressStatus(ride, user)
+      
+      case 'completed':
+        return this.handleCompletedStatus(ride, user)
+      
+      case 'cancelled':
+        return {
+          success: false,
+          statusCode: 'badRequest',
+          message: 'Veuillez utiliser la route dédiée pour annuler une course.'
+        }
+      
+      case 'requested':
+        return {
+          success: false,
+          statusCode: 'badRequest',
+          message: 'Impossible de réinitialiser le statut d\'une course.'
+        }
+      
+      default:
+        return {
+          success: false,
+          statusCode: 'badRequest',
+          message: 'Statut invalide'
+        }
+    }
+  }
+  
+  private async handleAcceptedStatus(ride: Ride, user: User, location?: { 
+    driver_latitude?: string, 
+    driver_longitude?: string 
+  }) {
+    // Vérification du rôle
+    if (user.role !== 'driver') {
+      return {
+        success: false,
+        statusCode: 'unauthorized',
+        message: 'Seuls les chauffeurs peuvent accepter des courses.'
+      }
+    }
+  
+    // Mise à jour des informations
+    ride.merge({
+      driverId: user.id,
+      status: 'accepted',
+      startedAt: DateTime.now(),
+      driverLatitude: location?.driver_latitude || undefined,
+      driverLongitude: location?.driver_longitude || undefined,
+      lastPositionUpdate: DateTime.now(),
+      updatedAt: DateTime.now()
+    })
+  
+    return { success: true }
+  }
+  
+  private async handleInProgressStatus(ride: Ride, user: User) {
+    if (user.role !== 'driver' || ride.driverId != user.id) {
+      return {
+        success: false,
+        statusCode: 'unauthorized',
+        message: 'Seul le chauffeur assigné peut démarrer la course.'
+      }
+    }
+  
+    ride.status = 'in_progress'
+    ride.updatedAt = DateTime.now()
+  
+    return { success: true }
+  }
+  
+  private async handleCompletedStatus(ride: Ride, user: User) {
+    if (user.role !== 'driver' || ride.driverId !== user.id) {
+      return {
+        success: false,
+        statusCode: 'unauthorized',
+        message: 'Seul le chauffeur assigné peut terminer la course.'
+      }
+    }
+  
+    ride.merge({
+      status: 'completed',
+      isPaid: true,
+      completedAt: DateTime.now(),
+      updatedAt: DateTime.now()
+    })
+  
+    return { success: true }
+  }
+  
+  private async handleStatusNotifications(ride: Ride, status: string, user: User) {
+    const io = Ws.io
+  
+    switch (status) {
+      case 'accepted':
+        // Émission socket.io pour acceptation
+        io.to(`ride_${ride.id}`).emit('ride:accepted', {
+          rideId: ride.id,
+          driverInfo: {
+            id: ride.driver.id,
+            first_name: ride.driver.firstName,
+            vehicule_type: ride.driver.vehiculeType,
+            phone: ride.driver.phone
+          },
+          driverPosition: {
+            latitude: ride.driverLatitude,
+            longitude: ride.driverLongitude
+          }
+        })
+  console.log("ride accepter"  ,ride)
+        // Notification push
+        await NotificationService.sendToUser(
+          ride.clientId,
+          'Confirmation de votre course ✅',
+          `Votre course de ${JSON.parse(ride.pickupLocation).address} à ${JSON.parse(ride.destinationLocation).address} est confirmée.`,
+          {
+            rideId: ride.id,
+            vehicleType: ride.vehicleType,
+            pickupLocation: ride.pickupLocation,
+            price: ride.price,
+            redirectTo: 'rides',
+            type: 'ride_accepted'
+          }
+        )
+        break
+  
+      case 'in_progress':
+        // Émission socket pour course en cours
+        io.to(`ride_${ride.id}`).emit('ride:status', {
+          rideId: ride.id,
+          status: 'in_progress'
+        })
+  
+        await NotificationService.sendToUser(
+          ride.clientId,
+          '🚦 Course en cours',
+          `Votre course a démarré. Le chauffeur est en route.`,
+          {
+            rideId: ride.id,
+            status: 'in_progress',
+            type: 'ride_in_progress'
+          }
+        )
+        break
+  
+      case 'completed':
+        // Émission socket pour course terminée
+        io.to(`ride_${ride.id}`).emit('ride:status', {
+          rideId: ride.id,
+          status: 'completed'
+        })
+  
+        await NotificationService.sendToUser(
+          ride.clientId,
+          '✅ Course terminée',
+          `Votre course a été complétée avec succès.`,
+          {
+            rideId: ride.id,
+            status: 'completed',
+            amount: ride.price,
+            type: 'ride_completed'
+          }
+        )
+        break
+  
+      default:
+        // Émission standard pour autres statuts
+        io.to(`ride_${ride.id}`).emit('ride:status', {
+          rideId: ride.id,
+          status: ride.status
+        })
+        break
+    }
+  }
   
   // Dans votre contrôleur RidesController.js
 
@@ -827,7 +1003,7 @@ public async export({ response }: HttpContextContract) {
 
  public async notifyAvailableDrivers({ request, response }: HttpContextContract) {
     const { ride } = request.only(['ride'])
-
+// console.log("ride " ,ride)
     if (!ride) {
       return response.status(400).send({ error: 'Ride data is required' })
     }
@@ -844,7 +1020,7 @@ public async export({ response }: HttpContextContract) {
       })
 
     const messages: any[] = [];
-
+console.log("tokens" ,tokens)
 
     for (const t of tokens) {
       const pushRes = await axios.post('https://exp.host/--/api/v2/push/send', {
@@ -880,7 +1056,7 @@ public async export({ response }: HttpContextContract) {
       .query()
       .preload('user', q => {
         q.where('role', 'driver')
-         .where('vehicule_type', vehicleType)
+        //  .where('vehicule_type', vehicleType)
         //  .where('is_available', true) // ton flag de connexion
         //  .where('is_on_ride', false)  // ton flag de course
       })

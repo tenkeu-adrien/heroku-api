@@ -196,7 +196,7 @@ console.log(userDelete ,"userDelete")
   public async promo({ request, params, response  }: HttpContextContract) {
 
 
-    console.log("userIds code apis" ,params.user_id)
+    // console.log("userIds code apis" ,params.user_id)
 
     const validationSchema = schema.create({
       code: schema.string({ trim: true }, [
