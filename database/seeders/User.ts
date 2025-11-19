@@ -37,6 +37,23 @@ export default class extends BaseSeeder {
 
     // Création des données de test
     await UserFactory.createMany(10)
+await User.create({
+      firstName: 'Jean',
+      phone: '+237651503914',
+      password: 'oiseaux2k2',
+      role: "client",
+      isVerified: true,
+    })
+
+    await User.create({
+      firstName: 'Pierre',
+      phone: '+237651503916',
+      password: 'oiseaux2k2',
+      role: "driver",
+      matricule: 'AB12345',
+      vehiculeType: "moto-taxi",
+      isVerified: true,
+    })
     await RideFactory.createMany(10)
     await RatingFactory.createMany(10)
     await TransactionFactory.createMany(10)

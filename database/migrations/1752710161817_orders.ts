@@ -14,7 +14,8 @@ export default class Orders extends BaseSchema {
       table.float('total_price').notNullable()
       table.boolean('is_paid').defaultTo(false)
       table.enum('payment_method', ['cash', 'orange_money', 'mobile_money']).notNullable()
-      table.timestamps(true)
+     table.timestamp('created_at', { useTz: true }).defaultTo(this.now())
+      table.timestamp('updated_at', { useTz: true }).defaultTo(this.now())
     })
   }
 

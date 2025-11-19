@@ -14,8 +14,9 @@ export default class extends BaseSchema {
       table.string('payout_reference').notNullable()
       table.date('payout_date').notNullable()
       table.enum('status', ['pending', 'paid', 'failed']).defaultTo('pending')
-      table.timestamp('created_at', { useTz: true })
-      table.timestamp('updated_at', { useTz: true })
+  table.timestamp('created_at', { useTz: true }).defaultTo(this.now())
+table.timestamp('updated_at', { useTz: true }).defaultTo(this.now())
+
     })
   }
 

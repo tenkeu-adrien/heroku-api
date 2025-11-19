@@ -32,8 +32,9 @@ table.text('reason').nullable()
 table.text('recipient').nullable()// pour les livraisons
 table.string('duration').nullable() 
 table.float('distance').nullable()
-table.timestamp('created_at', { useTz: true })
-table.timestamp('updated_at', { useTz: true })
+table.timestamp('created_at', { useTz: true }).defaultTo(this.now())
+table.timestamp('updated_at', { useTz: true }).defaultTo(this.now())
+
     })
   }
 

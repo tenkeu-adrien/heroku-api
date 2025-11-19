@@ -13,7 +13,8 @@ export default class Dishes extends BaseSchema {
       table.integer('dislikes').defaultTo(0)
       table.json('images').notNullable()
       table.integer('restaurant_id').unsigned().references('id').inTable('restaurants').onDelete('CASCADE')
-      table.timestamps(true)
+     table.timestamp('created_at', { useTz: true }).defaultTo(this.now())
+      table.timestamp('updated_at', { useTz: true }).defaultTo(this.now())
     })
   }
 

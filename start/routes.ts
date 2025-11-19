@@ -174,13 +174,6 @@ Route.get('/driver-payouts', 'DriverPayoutsController.index')
 Route.post('/driver-payouts', 'DriverPayoutsController.store')
 Route.patch('/driver-payouts/:id/status', 'DriverPayoutsController.updateStatus')
 
-
-
-
-
-
-
-
     // Paiements
     Route.post('/payments/initiate', 'PaymentController.initiate')
     Route.get('/payments/:id/verify', 'PaymentController.verify')

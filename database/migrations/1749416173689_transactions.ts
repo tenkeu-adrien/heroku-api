@@ -11,8 +11,9 @@ export default class extends BaseSchema {
       table.timestamp('transaction_date').notNullable()
       table.index(['ride_id'])
 table.index(['transaction_date'])
-      table.timestamp('created_at', { useTz: true })
-      table.timestamp('updated_at', { useTz: true })
+   table.timestamp('created_at', { useTz: true }).defaultTo(this.now())
+table.timestamp('updated_at', { useTz: true }).defaultTo(this.now())
+
     })
   }
 

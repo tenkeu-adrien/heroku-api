@@ -135,6 +135,9 @@ public async showw({ params, response }: HttpContextContract) {
       const status = request.input('status')
       const userRole = request.input('user_role') // client | driver | restaurant
 
+
+
+      console.log("je suis dans index"  ,userRole ,status ,limit)
       let query = Order.query()
         .preload('client')
         .preload('driver')

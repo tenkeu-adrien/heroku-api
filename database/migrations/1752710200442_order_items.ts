@@ -10,7 +10,8 @@ export default class OrderItems extends BaseSchema {
       table.integer('dish_id').unsigned().references('id').inTable('dishes').onDelete('CASCADE')
       table.integer('quantity').notNullable()
       table.decimal('unit_price', 10, 2).notNullable()
-      table.timestamps(true)
+     table.timestamp('created_at', { useTz: true }).defaultTo(this.now())
+      table.timestamp('updated_at', { useTz: true }).defaultTo(this.now())
     })
   }
 

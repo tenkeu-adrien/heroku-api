@@ -16,7 +16,8 @@ export default class Restaurants extends BaseSchema {
       table.integer('created_by').unsigned().references('id').inTable('users').onDelete('CASCADE')
       table.boolean('is_active').defaultTo(true)
       table.boolean('is_favorite').defaultTo(false)
-      table.timestamps(true)
+    table.timestamp('created_at', { useTz: true }).defaultTo(this.now())
+      table.timestamp('updated_at', { useTz: true }).defaultTo(this.now())
     })
   }
 

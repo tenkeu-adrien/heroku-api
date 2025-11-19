@@ -11,8 +11,9 @@ export default class extends BaseSchema {
       table.integer('sender_id').unsigned().references('id').inTable('users').onDelete('CASCADE')
       table.integer('receiver_id').unsigned().references('id').inTable('users').onDelete('CASCADE') // 👈 Ajout
       table.text('content')
-      table.timestamp('created_at', { useTz: true })
-      table.timestamp('updated_at', { useTz: true })
+ table.timestamp('created_at', { useTz: true }).defaultTo(this.now())
+table.timestamp('updated_at', { useTz: true }).defaultTo(this.now())
+
       table.boolean('is_read').defaultTo(false)
     })
   }

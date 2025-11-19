@@ -13,8 +13,9 @@ export default class extends BaseSchema {
       table.integer('delivery_fee').notNullable().defaultTo(2000)
       table.integer('commission_rate').notNullable().defaultTo(10) // Nouveau champ (en pourcentage)
       
-      table.timestamp('created_at', { useTz: true })
-      table.timestamp('updated_at', { useTz: true })
+table.timestamp('created_at', { useTz: true }).defaultTo(this.now())
+table.timestamp('updated_at', { useTz: true }).defaultTo(this.now())
+
     })
   }
 

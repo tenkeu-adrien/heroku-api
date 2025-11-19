@@ -16,8 +16,9 @@ export default class RatingsSchema extends BaseSchema {
       table.text('comment').nullable()
       
       // Timestamps
-      table.timestamp('created_at', { useTz: true })
-      table.timestamp('updated_at', { useTz: true })
+  table.timestamp('created_at', { useTz: true }).defaultTo(this.now())
+table.timestamp('updated_at', { useTz: true }).defaultTo(this.now())
+
       
       // Index
       table.index(['ride_id'])

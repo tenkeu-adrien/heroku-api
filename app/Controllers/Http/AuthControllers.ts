@@ -10,7 +10,7 @@ export default class AuthController {
   private registerSchema = schema.create({
     firstName: schema.string({trim:true}),
     password: schema.string({trim:true}),
-    phone: schema.string({trim:true}),
+    phone: schema.string(),
     role: schema.enum(['client', 'driver', 'deliverer' ,'manager' ,'admin'] as const),
     vehiculeType: schema.string.optional({trim:true}),
   matricule: schema.string.optional({trim:true}),
@@ -38,8 +38,7 @@ export default class AuthController {
 public async register({ request, response, auth }: HttpContextContract) {
   // Valider le payload
   const payload = await request.validate({ schema: this.registerSchema })
-
-
+console.log("payload" ,payload)
   try {
     // Création de l'utilisateur avec les URLs des fichiers
     const user = await User.create({
@@ -56,6 +55,7 @@ public async register({ request, response, auth }: HttpContextContract) {
     })
 
   } catch (error) {
+    console.log("error" ,error)
     return response.internalServerError({
       message: 'Erreur lors de la création du compte',
       error: error.message,
@@ -264,15 +264,16 @@ public async show({ params, response }: HttpContextContract) {
    */
   public async login({ request, response, auth }: HttpContextContract) {
     const { phone, password } = await request.validate({ schema: this.loginSchema })
-    // console.log("phone , password" ,phone ,password)
+    console.log("password login dans VtcApi" ,phone ,password)
     try {
       // Utilise phone comme identifiant
       const token = await auth.use('api').attempt(phone, password)
-
+  //  console.log("user connecter" ,token)
       const user = await User.query()
         .where('phone', phone)
         .where('isDeleted' , false)
         .firstOrFail()
+        // console.log("user connecter" ,user)
   
       return response.ok({
         user: user.serialize(),
@@ -330,7 +331,7 @@ console.log("token" ,token)
 
 
 
-  public async refresh({ auth, response, params }: HttpContextContract) {
+  public async refresh({ response, params }: HttpContextContract) {
     try {
       const { id } = params;
       

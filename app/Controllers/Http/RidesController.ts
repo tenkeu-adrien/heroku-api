@@ -366,6 +366,7 @@ public async store({ request, response , auth}: HttpContextContract) {
     try {
   const  userId =params.id
       // Compter les courses complétées comme client ou driver
+      // console.log("userId" ,userId)
       const ridesCountResult = await Ride.query()
         .where('status', 'completed')
         .andWhere((query) => {
@@ -373,7 +374,7 @@ public async store({ request, response , auth}: HttpContextContract) {
         })
         .count('id as total')
         .first();
-  
+  // console.log("rideCount" ,ridesCountResult)
       const ridesCount = ridesCountResult ? Number(ridesCountResult.$extras.total) : 0;
   
       // Calculer le total des prix des courses complétées
@@ -448,7 +449,7 @@ const {id:driverId} = request.params("id")
       .select(['rating', 'comment', 'created_at'])
       .orderBy('created_at', 'desc')
       .limit(10) // pour éviter d'envoyer trop de data, on limite aux 10 derniers
-console.log("ratings" ,ratings)
+// console.log("ratings" ,ratings)
     return {
       averageRating,
       ratings,
@@ -720,7 +721,7 @@ console.log("ratings" ,ratings)
             longitude: ride.driverLongitude
           }
         })
-  console.log("ride accepter"  ,ride)
+  // console.log("ride accepter"  ,ride)
         // Notification push
         await NotificationService.sendToUser(
           ride.clientId,
