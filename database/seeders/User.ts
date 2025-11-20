@@ -36,7 +36,7 @@ export default class extends BaseSeeder {
     ])
 
     // Création des données de test
-    await UserFactory.createMany(10)
+    await UserFactory.createMany(15)
 await User.create({
       firstName: 'Jean',
       phone: '+237651503914',
@@ -54,13 +54,31 @@ await User.create({
       vehiculeType: "moto-taxi",
       isVerified: true,
     })
+
+    await User.create({
+  firstName: 'John Doe',
+  phone: '+237651503917',
+  password: 'oiseaux2k2',
+  role: "driver",
+  matricule: 'CD67890',
+  vehiculeType: "moto-taxi",
+  isVerified: true,
+})
+
+    await User.create({
+  firstName: 'Jeanne Doe',
+  phone: '+237651503918',
+  password: 'oiseaux2k2',
+  role: "client",
+  isVerified: true,
+})
     await RideFactory.createMany(10)
     await RatingFactory.createMany(10)
     await TransactionFactory.createMany(10)
     await DriverPayoutFactory.createMany(10)
     await RatingFactory.createMany(15)
-    await UserFactory.createMany(12)
-    await RestaurantFactory.createMany(10)
+    await UserFactory.createMany(15)
+    await RestaurantFactory.createMany(15)
     await DishFactory.createMany(10)
     await OrderFactory.createMany(10)
     await OrderItemFactory.createMany(10)
