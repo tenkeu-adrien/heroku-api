@@ -383,8 +383,7 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
   const orderId = request.input('orderId') // Nouveau paramètre pour WeGo
 
 
-  console.log("rideId" ,rideId)
-  console.log("content",content)
+  console.log(" log dans store content rideId ",content ,rideId)
   // console.log("user",user)
   if (!content || content.trim().length === 0) {
     return response.badRequest({
@@ -398,10 +397,10 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
   // CAS 1: Message pour une commande WeGo (orderId présent)
   if (orderId) {
     // Rechercher la commande dans la table orders
-    console.log("je suis dans order")
+    console.log("je suis dans order" ,orderId)
     const order = await Database.from('orders')
       .where('id', rideId)
-      .andWhereIn('status', ['preparing', 'delivering', 'completed'])
+      .andWhereIn('status', ['pending','preparing', 'delivering', 'completed'])
       .first()
 
       console.log("rder",order)

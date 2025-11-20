@@ -922,6 +922,8 @@ async paymentDistribution({ response }) {
       return response.unauthorized({ success:false, message: 'Les chauffeurs ne peuvent pas annuler les courses.' })
     }
 
+    
+
     return response.badRequest({ success:false, message: 'Annulation non autorisée pour ce rôle.' })
   }
 
