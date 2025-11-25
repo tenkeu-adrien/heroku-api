@@ -137,7 +137,7 @@ public async showw({ params, response }: HttpContextContract) {
 
 
 
-      console.log("je suis dans index"  ,userRole ,status ,limit)
+      // console.log("je suis dans index"  ,userRole ,status ,limit)
       let query = Order.query()
         .preload('client')
         .preload('driver')
@@ -281,6 +281,8 @@ public async showw({ params, response }: HttpContextContract) {
   
       // Notification au RESTAURANT (charger la relation si nécessaire)
       await order.load('restaurant')
+      await order.load('client')
+      await order.load('driver')
       // if (order.restaurant) {
       //   await NotificationService.sendToUser(
       //     order.restaurant.userId, // Supposant que restaurant a un userId
@@ -326,7 +328,7 @@ public async showw({ params, response }: HttpContextContract) {
       await NotificationService.sendToUser(
         order.driverId,
         '🎯 Livraison complétée',
-        `Vous avez livré la commande #${order.id} avec succès.`,
+        `Vous avez livré la commande  de ${order.deliveryAddress} avec succès.`,
         {
           orderId: order.id,
           status: 'delivered',
@@ -339,7 +341,7 @@ public async showw({ params, response }: HttpContextContract) {
     }
   
     // Notification au RESTAURANT
-    if (order.restaurant) {
+    // if (order.restaurant) {
       // await NotificationService.sendToUser(
       //   order.restaurant.userId,
       //   '🏁 Commande livrée',
@@ -350,8 +352,67 @@ public async showw({ params, response }: HttpContextContract) {
       //     type: 'restaurant_delivery_complete'
       //   }
       // )
-    }
+    // }
   }
+
+
+
+  public async getDriverLocation({ params, response}: HttpContextContract) {
+console.log("je suis dans getDriverLocation" ,params.id)
+
+  // Si tu stockes la dernière position connue dans la table Order ou DriverLocation
+  const lastLocation = await Database.from('driver_positions')
+    .where('order_id', params.id)
+    .orderBy('created_at', 'desc')
+    .first();
+
+  if (!lastLocation) {
+    return response.notFound({ message: 'Position non disponible' });
+  }
+console.log("lastLocation" ,lastLocation)
+  return  response.json(  { 
+    lat: lastLocation.latitude,
+    lng: lastLocation.longitude,
+    updated_at: lastLocation.created_at,
+  });
+}
+
+
+  public async storeDriver({ params, request , response ,auth}: HttpContextContract) {
+    const user = auth.user!
+    // const { lat, lng } = request.input("lat")
+const io = Ws.io
+    const order = await Order.findOrFail(params.id)
+
+    order.load("driver")
+    order.load("client")
+    order.load("restaurant")
+    if (order.driverId !== user.id) {
+      return response.status(403).json({ message: 'Accès refusé : Vous n\'êtes pas le livreur de cette commande.' });
+    }
+     const { lat, lng } = request.only(['lat', 'lng']);
+
+ const lastLocation =await Database.insertQuery().table('driver_positions').insert({
+  order_id: params.id,
+  driver_id: user.id,
+  latitude: lat,
+  longitude: lng,
+});
+
+  if (!lastLocation) {
+    return response.notFound({ message: 'Position non disponible' });
+  }
+  io.emit('order:position', {
+   order ,
+    lat,
+    lng,
+  });
+  return {
+    lat: lastLocation.latitude,
+    lng: lastLocation.longitude,
+    updated_at: lastLocation.created_at,
+  };
+}
   
   private async handlePreparingStatus(order: Order) {
     // Notification au CLIENT

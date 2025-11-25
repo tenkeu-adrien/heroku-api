@@ -73,16 +73,9 @@ export default class User extends BaseModel {
 
 
   @hasMany(() => Rating, {
-    foreignKey: 'clientId' // Utilisez le nom de la propriété (clientId) pas le nom de colonne
-  })
-  public givenRatings: HasMany<typeof Rating>
-
-  @hasMany(() => Rating, {
-    foreignKey: 'driverId' // Utilisez le nom de la propriété (driverId) pas le nom de colonne
+    foreignKey: 'userId' // Utilisez le nom de la propriété (driverId) pas le nom de colonne
   })
   public receivedRatings: HasMany<typeof Rating>
-
-
 
   @hasMany(() => Vehicle)
   public vehicles: HasMany<typeof Vehicle>

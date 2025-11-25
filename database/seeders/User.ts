@@ -77,7 +77,7 @@ await User.create({
     await TransactionFactory.createMany(10)
     await DriverPayoutFactory.createMany(10)
     await RatingFactory.createMany(15)
-    await UserFactory.createMany(15)
+    // await UserFactory.createMany(15)
     await RestaurantFactory.createMany(15)
     await DishFactory.createMany(10)
     await OrderFactory.createMany(10)

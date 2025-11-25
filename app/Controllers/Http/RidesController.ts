@@ -122,71 +122,144 @@ export default class RidesController {
   }
 
 
-  public async indexx({ auth, request, response }: HttpContextContract) {
-    await auth.authenticate()
-    const user = auth.user!
-    const page = request.input('page', 1)
-    const limit = 10
-    const status = request.input('status', 'pending')
+//   public async indexx({ auth, request, response }: HttpContextContract) {
+//     await auth.authenticate()
+//     const user = auth.user!
+//     const page = request.input('page', 1)
+//     const limit = 10
+//     const status = request.input('status', 'pending')
+// // console.log("user dans ride" ,user)
+//     let query = Ride.query()
+//       .orderBy('created_at', 'desc')
+//       .preload('driver')
+//       .preload('client')
 
-    let query = Ride.query()
-      .orderBy('created_at', 'desc')
-      .preload('driver')
-      .preload('client')
+//     if (user.role === 'client') {
+//       query = query.where('client_id', user.id)
+//     } else if (user.role === 'driver') {
+//       if (status.includes('pending')) {
+//         // Si le statut contient 'pending', on applique les filtres spécifiques
+//         query = query
+//           .whereIn('status', ['pending' ,'accepted'])
+//           .where('vehicle_type', user.vehicule_type) // Filtrer par type de véhicule du driver
+//       } else {
+//         // Pour les autres statuts, on filtre par driver_id
+//         query = query.where('driver_id', user.id)
+//       }
+//     }
 
-    if (user.role === 'client') {
-      query = query.where('client_id', user.id)
-    } else if (user.role === 'driver') {
-      if (status.includes('pending')) {
-        // Si le statut contient 'pending', on applique les filtres spécifiques
-        query = query
-          .whereIn('status', ['pending' ,'accepted'])
-          .where('vehicle_type', user.vehicule_type) // Filtrer par type de véhicule du driver
-      } else {
-        // Pour les autres statuts, on filtre par driver_id
-        query = query.where('driver_id', user.id)
-      }
+//     if (status !== 'all') {
+//       // Si le statut contient plusieurs valeurs séparées par des virgules
+//       if (status.includes(',')) {
+//         const statuses = status.split(',')
+//         query = query.whereIn('status', statuses)
+//       } else {
+//         query = query.where('status', status)
+//       }
+//     }
+
+//     const rides = await query.paginate(page, limit)
+
+//     // Sérialisation manuelle
+//     const serializedRides = rides.serialize().data.map(ride => ({
+//       ...ride,
+//       pickup_location: typeof ride.pickup_location === 'string' 
+//         ? ride.pickup_location 
+//         : JSON.stringify(ride.pickup_location),
+//       destination_location: typeof ride.destination_location === 'string'
+//         ? ride.destination_location
+//         : JSON.stringify(ride.destination_location),
+//       driver: ride.driver ? {
+//         ...ride.driver
+//       } : null,
+//       client: ride.client ? {
+//         ...ride.client
+//       } : null
+//     }))
+
+//     return response.json({
+//       success: true,
+//       message: "rides get success",
+//       rides: {
+//         data: serializedRides,
+//         meta: rides.serialize().meta
+//       }
+//     })
+// }
+
+public async indexx({ auth, request, response }: HttpContextContract) {
+  await auth.authenticate()
+  const user = auth.user!
+  const page = request.input('page', 1)
+  const limit = 10
+  let status = request.input('status', 'pending')
+
+  // console.log("user driver qui veux ses courses terminer", user ,status)
+  let query = Ride.query()
+    .orderBy('created_at', 'desc')
+    .preload('driver')
+    .preload('client')
+// console.log("user dans indexx",user)
+  if (user.role === 'client') {
+    query = query.where('client_id', user.id)
+  } 
+  else if (user.role === 'driver') {
+    // VERSION ULTRA-SÛRE (recommandée pour toi)
+    if (status.includes('pending')) {
+      query = query.where((builder) => {
+        // 1. Courses vraiment disponibles : pending + pas encore prises + bon véhicule
+        builder
+          .where('status', 'pending')
+          .whereNull('driver_id')
+          .where('vehicle_type', user.vehicule_type)
+
+        // 2. OU les courses que CE chauffeur a déjà acceptées (en cours)
+        builder.orWhere((sub) => {
+          sub.where('status', 'accepted').where('driver_id', user.id)
+        })
+      })
+    } else {
+      // Tous les autres statuts (completed, cancelled, etc.) → seulement les siennes
+      query = query.where('driver_id', user.id)
     }
+  }
 
-    if (status !== 'all') {
-      // Si le statut contient plusieurs valeurs séparées par des virgules
-      if (status.includes(',')) {
-        const statuses = status.split(',')
-        query = query.whereIn('status', statuses)
-      } else {
-        query = query.where('status', status)
-      }
+  // Gestion du filtre status (all, completed, cancelled, pending,etc.)
+  if (status !== 'all') {
+    if (status.includes(',')) {
+      const statuses = status.split(',')
+      query = query.whereIn('status', statuses)
+    } else {
+      query = query.where('status', status)
     }
+  }
 
-    const rides = await query.paginate(page, limit)
+  // console.log("query" ,query)
 
-    // Sérialisation manuelle
-    const serializedRides = rides.serialize().data.map(ride => ({
-      ...ride,
-      pickup_location: typeof ride.pickup_location === 'string' 
-        ? ride.pickup_location 
-        : JSON.stringify(ride.pickup_location),
-      destination_location: typeof ride.destination_location === 'string'
-        ? ride.destination_location
-        : JSON.stringify(ride.destination_location),
-      driver: ride.driver ? {
-        ...ride.driver
-      } : null,
-      client: ride.client ? {
-        ...ride.client
-      } : null
-    }))
+  const rides = await query.paginate(page, limit)
 
-    return response.json({
-      success: true,
-      message: "rides get success",
-      rides: {
-        data: serializedRides,
-        meta: rides.serialize().meta
-      }
-    })
+  // Sérialisation propre des locations (string ou JSON)
+  const serializedRides = rides.serialize().data.map(ride => ({
+    ...ride,
+    pickup_location: typeof ride.pickup_location === 'string'
+      ? ride.pickup_location
+      : JSON.stringify(ride.pickup_location),
+    destination_location: typeof ride.destination_location === 'string'
+      ? ride.destination_location
+      : JSON.stringify(ride.destination_location),
+    driver: ride.driver ? { ...ride.driver } : null,
+    client: ride.client ? { ...ride.client } : null,
+  }))
+
+  return response.json({
+    success: true,
+    message: "rides get success",
+    rides: {
+      data: serializedRides,
+      meta: rides.serialize().meta,
+    },
+  })
 }
-
 
 
   public async get({ response }: HttpContextContract) {

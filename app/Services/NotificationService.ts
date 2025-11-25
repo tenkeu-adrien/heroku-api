@@ -33,7 +33,7 @@ static async sendToDrivers(title: string, body: string, data = {}) {
        .where('is_deleted', false);
     });
 
-  // console.log("tokens trouvés:", tokens.length);
+  console.log("tokens trouvés:", tokens);
   console.log("users:", tokens.map(t => ({
     id: t.userId,
     role: t.$preloaded.user?.role,

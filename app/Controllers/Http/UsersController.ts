@@ -1,5 +1,5 @@
+import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext';
 // app/Controllers/Http/UsersController.ts
-import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import User from 'App/Models/User'
 import { schema, rules } from '@ioc:Adonis/Core/Validator'
 import Ride from 'App/Models/Ride'
@@ -7,15 +7,25 @@ import PromoCode from 'App/Models/PromoCode'
 import { DateTime } from 'luxon'
 import ExcelJS from 'exceljs'
 import PushToken from 'App/Models/PushToken'
+// import S3 from '@aws-sdk/client-S3'
+import { v4 as uuidv4 } from 'uuid'
+import Env from '@ioc:Adonis/Core/Env'
+
+// const s3 = new S3({
+//   accessKeyId: Env.get('S3_KEY'),
+//   secretAccessKey: Env.get('S3_SECRET'),
+//   region: Env.get('S3_REGION'),
+//   signatureVersion: 'v4',
+// })
 
 export default class UsersController {
-  public async index({ request, response }: HttpContextContract) {
+  public async indexx({ request, response }: HttpContextContract) {
     const page = request.input('page', 1)
     const limit = request.input('limit', 5)
     const searchTerm = request.input('search', '')
     const roleFilter = request.input('role', 'all')
     const regionFilter = request.input('region', 'all')
-  
+  console.log("ici je vais le get des users")
     // Construction de la requête de base avec les relations
     let query = User.query()
       .select('users.*')
@@ -93,7 +103,134 @@ export default class UsersController {
       message: "Users retrieved successfully"
     })
   }
+  public async index({ request, response }: HttpContextContract) {
+  const page = request.input('page', 1)
+  const limit = request.input('limit', 10)
+  const searchTerm = request.input('search', '')
+  const roleFilter = request.input('role', 'all')
+  const regionFilter = request.input('region', 'all')
 
+  // Construction de la requête de base
+  let query = User.query()
+    .select('users.*')
+    .withCount('clientRides', (q) => q.as('client_rides_count'))
+    .withCount('driverRides', (q) => q.as('driver_rides_count'))
+    .withAggregate('clientRides', (q) => q.sum('distance').as('client_distance_total'))
+    .withAggregate('driverRides', (q) => q.sum('distance').as('driver_distance_total'))
+    .withAggregate('clientRides', (q) => q.sum('duration').as('client_duration_total'))
+    .withAggregate('driverRides', (q) => q.sum('duration').as('driver_duration_total'))
+    .withAggregate('driverRides', (q) => {
+      q.sum('price').as('driver_revenue').where('status', 'completed')
+    })
+    .orderBy('created_at', 'desc')
+
+  // Filtres classiques
+  if (searchTerm) {
+    query.where((builder) => {
+      builder
+        .where('first_name', 'like', `%${searchTerm}%`)
+        .orWhere('phone', 'like', `%${searchTerm}%`)
+    })
+  }
+
+  if (roleFilter !== 'all') {
+    query.where('role', roleFilter)
+  }
+
+  if (regionFilter !== 'all') {
+    query.where('ville', regionFilter)
+  }
+
+  // === AJOUT CRUCIAL : Charger les ratings avec commentaires pour les chauffeurs ===
+  query.preload('receivedRatings', (ratingsQuery) => {
+    ratingsQuery
+      .select('rating', 'comment', 'created_at', 'user_id')
+      .whereNotNull('comment') // Optionnel : seulement les avis avec commentaire
+      .orderBy('created_at', 'desc')
+      .limit(limit) // Tu peux augmenter si besoin
+  })
+
+  // Calcul de la moyenne des notes (directement en DB, ultra rapide)
+  query.withAggregate('receivedRatings', (agg) => {
+    agg.avg('rating').as('average_rating')
+  })
+
+  // Exécution
+  const users = await query.paginate(page, limit)
+
+  // Formatage de la réponse (identique à avant + ratings)
+  return response.json({
+    success: true,
+    data: {
+      meta: users.getMeta(),
+      users: users.all().map((user) => {
+        const json = user.toJSON()
+
+        // Si c'est un chauffeur, on ajoute les ratings
+        const isDriver = ['driver', 'deliverer'].includes(user.role)
+        const ratings = isDriver ? (user.receivedRatings || []) : []
+        const averageRating = isDriver 
+          ? parseFloat(user.$extras.average_rating || '0').toFixed(1)
+          : null
+
+        return {
+          ...json,
+          revenue: Number(user.$extras.driver_revenue || 0),
+          average_rating: averageRating, // ← nouveau champ
+          ratings_count: ratings.length, // ← nombre d'avis
+          ratings: ratings.map(r => ({
+            rating: r.rating,
+            comment: r.comment,
+            created_at: r.created_at,
+          })),
+          rides_stats: {
+            count: {
+              total: Number(user.$extras.client_rides_count) + Number(user.$extras.driver_rides_count),
+              as_client: Number(user.$extras.client_rides_count),
+              as_driver: Number(user.$extras.driver_rides_count),
+            },
+            distance: {
+              total: Number(user.$extras.client_distance_total) + Number(user.$extras.driver_distance_total),
+              as_client: Number(user.$extras.client_distance_total),
+              as_driver: Number(user.$extras.driver_distance_total),
+            },
+            duration: {
+              total: Number(user.$extras.client_duration_total) + Number(user.$extras.driver_duration_total),
+              as_client: Number(user.$extras.client_duration_total),
+              as_driver: Number(user.$extras.driver_duration_total),
+            },
+          },
+        }
+      }),
+    },
+    message: 'Users retrieved successfully',
+  })
+}
+
+
+// public async getPresignedUrl({ request, params, auth }: HttpContextContract) {
+//     const user = auth.user!
+//     const conversationId = params.id
+//     const { fileType } = request.only(['fileType']) // ex: image/jpeg
+
+//     const extension = fileType === 'image/png' ? 'png' : 'jpg'
+//     const key = `chat/${conversationId}/${uuidv4()}.${extension}`
+
+//     const uploadUrl = s3.getSignedUrl('putObject', {
+//       Bucket: Env.get('S3_BUCKET'),
+//       Key: key,
+//       ContentType: fileType,
+//       ACL: 'public-read',
+//       Expires: 300, // 5 minutes
+//     })
+
+//     const publicUrl = `https://${Env.get('S3_BUCKET')}.s3.amazonaws.com/${key}`
+
+//     return   Response.json({ uploadUrl, key, publicUrl })
+
+
+//   } 
+  
   public async show({ params ,response }: HttpContextContract) {
      let user = await User.findOrFail(params.id)
       
@@ -305,6 +442,58 @@ console.log(userDelete ,"userDelete")
   }
 }
 
+
+ async checkActivePromosUser({request,params, response }) {
+  try {
+    // ✅ Validation du payload
+    // const promoSchema = schema.create({
+    //   code: schema.string({ trim: true }),
+    // })
+    // const { code } = await request.validate({ schema: promoSchema })
+    const user = params.id
+// console.log("user dans user ",user)
+    // ✅ Vérifier si le code promo est actif et valide
+    const promo = await PromoCode.query()
+      // .where('code', code)
+      .where('user_id', user)
+      .where('is_active', true)
+      .where('rides_count', '>', 'used_count')
+      .where('start_date', '<=', DateTime.now().toSQL())
+      .where('end_date', '>=', DateTime.now().toSQL())
+      .first()
+
+    if (!promo) {
+      return response.ok({
+        valid: false,
+        promo: null,
+        message: 'Le code promo est invalide ou expiré',
+      })
+    }
+
+    // Vérifier rides_count vs used_count
+    if (promo.usedCount >= promo.ridesCount) {
+      return response.ok({
+        valid: false,
+        promo: null,
+        message: 'Le code promo a déjà été utilisé au maximum',
+      })
+    }
+
+    // ✅ Réponse attendue par ton frontend
+    return response.ok({
+      valid: true,
+      promo: promo.toJSON(),
+      message: 'Code promo appliqué avec succès 🎉',
+    })
+  } catch (error) {
+    console.error('Erreur checkActivePromos:', error)
+    return response.internalServerError({
+      valid: false,
+      promo: null,
+      message: 'Erreur lors de la vérification du code promo',
+    })
+  }
+}
 // Pour obtenir la promo active d'un utilisateur
 async getActivePromo({ params, response }) {
   const promo = await PromoCode.query()
@@ -318,18 +507,73 @@ async getActivePromo({ params, response }) {
   return response.ok({ data: promo || null })
 }
 
+// public async store({ auth, request }: HttpContextContract) {
+//   const token = request.input('token');
+//   const user = auth.user!;
+
+//   try {
+//     const existingToken = await PushToken.query()
+//       .where('userId', user.id)
+//       .first();
+
+//     if (existingToken) {
+//       existingToken.token = token;
+//       await existingToken.save();
+//     } else {
+//       await PushToken.create({
+//         userId: user.id,
+//         token: token
+//       });
+//     }
+
+//     return { success: true };
+//   } catch (error) {
+//   //   if (error.code === 'ER_LOCK_DEADLOCK') {
+//   //     // Relancer une fois après un délai
+//   //     await new Promise(resolve => setTimeout(resolve, 100));
+//   //     return this.store({ auth, request }:HttpContextContract);
+//   //   }
+//   //   throw error;
+//   return error
+//   }
+// }
+
+
+
 
 public async store({ auth, request }: HttpContextContract) {
-    const token = request.input('token');
-    const user = auth.user!;
+  const token = request.input('token')
+  const user = auth.user!
 
-    await PushToken.updateOrCreate(
-      { userId: user.id },
-      { token }
-    );
+  // console.log("user in push token" , user.id , token)
+  try {
+    // Utilise la vraie colonne de la BDD : user_id (pas userId)
+    const existingToken = await PushToken.query()
+      .where('user_id', user.id)    // ← ici : user_id
+      .first()
 
-    return { success: true };
+    if (existingToken) {
+      existingToken.token = token
+      await existingToken.save()
+      console.log("existingToken" , existingToken)
+      return { success: true, message: 'Token updated' }
+    }
+
+    // Même chose ici : la clé étrangère s'appelle user_id
+    await PushToken.create({
+      userId: user.id,   // ← user_id
+      token,
+    })
+console.log("new token created")
+    return { success: true, message: 'Token saved' }
+  } catch (error) {
+    // En production, ne renvoie jamais l'erreur brute au front
+    console.error('PushToken store error:', error)
+    return { success: false, message: 'Failed to save token' }
   }
+}
+
+
 
 public async export({ response }: HttpContextContract) {
   const users = await User.all()

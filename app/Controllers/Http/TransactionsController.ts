@@ -109,6 +109,77 @@ export default class TransactionsController {
     })
   }
 }
+
+public async getUserTransactionss({ request, response, params }: HttpContextContract) {
+  const userId = Number(params.id)
+  const page = request.input('page', 1)
+  const limit = request.input('limit', 15)
+
+  try {
+    const transactions = await Transaction.query()
+      .select(
+        'transactions.*',
+        'rides.vehicle_type',
+        'rides.status',
+        'rides.distance',
+        'rides.price',
+        'rides.payment_method',
+        'rides.is_paid',
+        'rides.started_at',
+        'rides.completed_at',
+        'rides.reason',
+        'rides.recipient',
+        'rides.duration',
+        'driver.firstName as driver_name',
+        'driver.phone as driver_phone',
+        'client.firstName as client_name',
+        'client.phone as client_phone'
+      )
+      .leftJoin('rides', 'rides.id', 'transactions.ride_id')
+      .leftJoin('users as driver', 'driver.id', 'rides.driver_id')
+      .leftJoin('users as client', 'client.id', 'rides.client_id')
+      .where((query) => {
+        query.where('rides.client_id', userId).orWhere('rides.driver_id', userId)
+      })
+      .orderBy('transactions.transaction_date', 'desc')
+      .paginate(page, limit)
+
+    const formatted = transactions.toJSON()
+    formatted.data = formatted.data.map(t => ({
+      id: t.id,
+      ride_id: t.ride_id,
+      amount: t.price || 0,
+      commission: t.commission,
+      transaction_date: t.transaction_date,
+      ride: {
+        id: t.ride_id,
+        vehicle_type: t.vehicle_type,
+        status: t.status,
+        distance: t.distance,
+        price: t.price,
+        payment_method: t.payment_method,
+        is_paid: t.is_paid,
+        started_at: t.started_at,
+        completed_at: t.completed_at,
+        reason: t.reason,
+        recipient: t.recipient,
+        duration: t.duration,
+        driver: t.driver_id ? { id: t.driver_id, firstName: t.driver_name, phone: t.driver_phone } : null,
+        client: t.client_id ? { id: t.client_id, firstName: t.client_name, phone: t.client_phone } : null,
+      },
+      client: t.client_id ? { id: t.client_id, firstName: t.client_name, phone: t.client_phone } : null,
+      driver: t.driver_id ? { id: t.driver_id, firstName: t.driver_name, phone: t.driver_phone } : null,
+    }))
+
+    return response.ok(formatted)
+  } catch (error) {
+    console.error('Transaction error:', error.message)
+    return response.internalServerError({ message: 'Erreur serveur' })
+  }
+}
+
+
+
   public async store({ request, response }: HttpContextContract) {
     const transactionSchema = schema.create({
       rideId: schema.number([rules.exists({ table: 'rides', column: 'id' })]),

@@ -88,13 +88,13 @@ public async store({ request, auth ,response}: HttpContextContract) {
 
 
 public async markMessagesAsRead({ auth, params, response }: HttpContextContract) {
-  console.log("je suis dans markMessagesAsRead")
+  // console.log("je suis dans markMessagesAsRead")
   const user = auth.user!
   const rideId = params.rideId
 
   try {
     // Vérifier l'accès dans les deux tables (Ride et Order)
-    const [ride, order] = await Promise.all([
+    const [ride] = await Promise.all([
       Database.from('rides')
         .where('id', rideId)
         .andWhere((query) => {
@@ -104,17 +104,17 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
         .andWhereIn('status', ['accepted', 'in_progress', 'completed'])
         .first(),
       
-      Database.from('orders')
-        .where('id', rideId)
-        .andWhere((query) => {
-          query.where('client_id', user.id)
-            .orWhere('driver_id', user.id)
-        })
-        .andWhereIn('status', ['preparing', 'delivering', 'delivered'])
-        .first()
+      // Database.from('orders')
+      //   .where('id', rideId)
+      //   .andWhere((query) => {
+      //     query.where('client_id', user.id)
+      //       .orWhere('driver_id', user.id)
+      //   })
+      //   .andWhereIn('status', ['preparing', 'delivering', 'delivered'])
+      //   .first()
     ])
 
-    const conversation = ride || order
+    const conversation = ride 
 
     if (!conversation) {
       console.log("conversation par trouver")
@@ -152,6 +152,63 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
   }
 }
   
+
+
+public async markMessagesAsReadOrder({ auth, params, response }: HttpContextContract) {
+  const user = auth.user!
+  const rideId = params.rideId
+
+  try {
+    // Vérifier l'accès dans les deux tables (Ride et Order)
+    const [order] = await Promise.all([
+            Database.from('orders')
+        .where('id', rideId)
+        .andWhere((query) => {
+          query.where('client_id', user.id)
+            .orWhere('driver_id', user.id)
+        })
+        .andWhereIn('status', ['preparing', 'delivering', 'delivered'])
+        .first()
+    ])
+
+    const conversation =order
+
+    if (!conversation) {
+      console.log("conversation par trouver dans order")
+      return response.json({ 
+        message: 'Conversation non trouvée ou vous n\'y avez pas accès' 
+      })
+    }
+
+    // Marquer les messages comme lus
+    const updatedCount = await WegoMessage
+      .query()
+      .where('order_id', rideId)
+      .where('receiver_id', user.id)
+      .where('is_read', false)
+      .update({ isRead: true })
+
+    // Émettre un événement WebSocket pour informer de la lecture
+    const io = Ws.io
+    io.to(`ride_${rideId}`).emit('ride:messages_read', {
+      rideId,
+      readerId: user.id,
+      readAt: new Date().toISOString()
+    })
+
+    // console.log("updatedCount dans markMessagesAsReadOrder" ,updatedCount)
+    return response.ok({
+      message: 'Messages marqués comme lus',
+      updatedCount,
+    })
+
+  } catch (error) {
+    console.log('Erreur dans markMessagesAsRead:', error)
+    return response.internalServerError({ 
+      message: 'Erreur lors du marquage des messages' 
+    })
+  }
+}
 
   // public async indexx({ auth, params, request, response }: HttpContextContract) {
   //   const user = auth.user!
@@ -218,7 +275,7 @@ public async markMessagesAsRead({ auth, params, response }: HttpContextContract)
   const page = request.input('page', 1)
   const limit = 20
 console.log("type" ,type)
-console.log("user dans indexx" ,rideId)
+// console.log("user dans indexx" ,rideId ,user)
   // Déterminer la table de messages à utiliser
   const messageTable = type === 'order' ? 'wego_messages' : 'messages'
   const idField = type === 'order' ? 'order_id' : 'ride_id'
@@ -227,7 +284,7 @@ console.log("user dans indexx" ,rideId)
   let hasAccess = false
   
   if (type == 'ride' || type == undefined) {
-    console.log("je suis dans ride" ,rideId)
+    // console.log("je suis dans ride" ,rideId)
     const rideAccess = await Database.from('rides')
       .select('id')
       .where('id', rideId)
@@ -374,7 +431,7 @@ console.log("user dans indexx" ,rideId)
 //     data: messageData
 //   })
 // }
-  
+  // markMessagesAsReadOrder
 
 public async storee({ auth, params, request, response }: HttpContextContract) {
   const user = auth.user!
@@ -383,7 +440,7 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
   const orderId = request.input('orderId') // Nouveau paramètre pour WeGo
 
 
-  console.log(" log dans store content rideId ",content ,rideId)
+  // console.log(" log dans store content rideId ",content ,rideId)
   // console.log("user",user)
   if (!content || content.trim().length === 0) {
     return response.badRequest({
@@ -397,10 +454,10 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
   // CAS 1: Message pour une commande WeGo (orderId présent)
   if (orderId) {
     // Rechercher la commande dans la table orders
-    console.log("je suis dans order" ,orderId)
+    // console.log("je suis dans order" ,orderId)
     const order = await Database.from('orders')
       .where('id', rideId)
-      .andWhereIn('status', ['pending','preparing', 'delivering', 'completed'])
+      .andWhereIn('status', ['preparing', 'delivering', 'completed'])
       .first()
 
       console.log("rder",order)
@@ -424,45 +481,82 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
     }
 
     // Créer le message dans la table wego_messages
-    const wegoMessage = await Database.table('wego_messages').insert({
-      order_id: orderId,
-      sender_id: user.id,
-      receiver_id: receiverId,
-      content: content.trim(),
-      created_at: new Date(),
-      updated_at: new Date()
-    }).returning('*')
+    // const wegoMessage = await Database.table('wego_messages').insert({
+    //   order_id: orderId,
+    //   sender_id: user.id,
+    //   receiver_id: receiverId,
+    //   content: content.trim(),
+    //   created_at: new Date(),
+    //   updated_at: new Date()
+    // }).returning('*')
 
-    const messageData = {
-      id: wegoMessage[0].id,
-      orderId: orderId,
+
+     const message = await WegoMessage.create({
+     orderId: orderId,
       senderId: user.id,
       receiverId: receiverId,
-      content: wegoMessage[0].content,
-      createdAt: wegoMessage[0].created_at,
-      isRead: false,
-      sender: user.id === wegoMessage[0].sender_id ? 'user' : 'contact',
-      messageType: 'wego' // Pour identifier le type de message côté frontend
-    }
+      content: content.trim(),
+    
+    })
 
+    // const messageData = {
+    //   id: wegoMessage[0].id,
+    //   orderId: orderId,
+    //   senderId: user.id,
+    //   receiverId: receiverId,
+    //   content: wegoMessage[0].content,
+    //   createdAt: wegoMessage[0].created_at,
+    //   isRead: false,
+    //   sender: user.id == wegoMessage[0].sender_id ? 'user' : 'contact',
+    //   messageType: 'order' // Pour identifier le type de message côté frontend
+    // }
+
+
+
+
+    
+    const messageData = {
+      id: message.id,
+      orderId,
+      senderId: user.id,
+      receiverId,
+      content: message.content,
+      createdAt: message.createdAt,
+      isRead: false,
+      sender: user.id == message.senderId ? 'user' : 'contact',
+      messageType: 'order'} // Pour identifier le type de message côté frontend}
     // Émettre les événements WebSocket pour WeGo
-    io.to(`order_${orderId}`).emit('wego:message', messageData)
-    io.to(`user_${receiverId}`).emit('notification:wego_message', messageData)
+    // io.to(`order_${orderId}`).emit('wego:message', messageData)
+    // io.to(`user_${receiverId}`).emit('notification:wego_message', messageData)
+      io.to(`ride_${rideId}`).emit('ride:message', messageData)
+    io.to(`user_${receiverId}`).emit('notification:new_message', messageData)
+
 
     console.log("WeGo message sent to user:", receiverId);
-    console.log("Order details:", order);
+    // console.log("Order details:", order);
 
     // Envoyer la notification pour WeGo
-    await NotificationService.sendToUser(
-      receiverId,
-      'Nouveau message - Commande',
-      `${user.first_name} : ${content}`,
-      {
-        orderId: order.id,
-        redirectTo: 'chat',
-        type: 'wego'
-      }
-    )
+    // await NotificationService.sendToUser(
+    //   receiverId,
+    //   'Nouveau message - Commande',
+    //   `${user.first_name} : ${content}`,
+    //   {
+    //     orderId: order.id,
+    //     redirectTo: 'chat',
+    //     type: 'wego'
+    //   }
+    // )
+
+await NotificationService.sendToUser(
+  receiverId,
+  'Nouveau message - Commande',
+  content?.startsWith('https') ? `${user.first_name} : 📷 Image` : `${user.first_name} : ${content}`,
+  {
+    orderId: order.id,
+    redirectTo: 'chat',
+    type: 'wego'
+  }
+);
 
     return response.json({
       success: true,
@@ -474,7 +568,7 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
   // CAS 2: Message pour une course normale (rideId seulement)
   else {
     // Rechercher UNIQUEMENT dans la table rides
-    console.log("je suis dans rides")
+    // console.log("je suis dans rides")
     const ride = await Database.from('rides')
       .where('id', rideId)
       .andWhereIn('status', ['pending' ,'accepted', 'in_progress', 'completed'])
@@ -530,7 +624,7 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
     await NotificationService.sendToUser(
       receiverId,
       'Nouveau message - Course',
-      `${user.first_name} : ${content}`,
+      content?.startsWith('https') ? `${user.first_name} : 📷 Image` : `${user.first_name} : ${content}`,
       {
         rideId: ride.id,
         vehicleType: ride.vehicle_type,
@@ -784,7 +878,7 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
 
     // Si type est 'order' ou 'all', charger les contacts WegoFood
     if (type === 'order') {
-       console.log("je suis dans order getContacts")
+      //  console.log("je suis dans order getContacts")
       const wegoMessages = await WegoMessage.query()
         .where('sender_id', userId)
         .orWhere('receiver_id', userId)
@@ -794,7 +888,7 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
 // console.log("wegoMessages" ,wegoMessages)
       for (const message of wegoMessages) {
         const conversationId = message.orderId
-        const conversationKey = `order_${conversationId}`
+        const conversationKey = `ride_${conversationId}`
         
         if (seenOrderIds.has(conversationKey)) continue
         seenOrderIds.add(conversationKey)
@@ -806,12 +900,14 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
           .preload('driver')
           .first()
 
+console.log("order 1")
         if (!order) continue
 
         // Déterminer le contact selon le rôle
         let contactUser = null
         let contactName = ''
         
+          console.log("order dans getContacts")
         if (user.role === 'client') {
           contactUser = order.driver
           contactName = order.driver ? 
@@ -824,8 +920,8 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
             'Client'
         }
 
-        if (!contactUser) continue
-
+        if (!contactUser) continue 
+          // console.log("je texte apres contact" ,contactUser)
         // Compter les messages non lus pour WegoFood
         const unreadCount = await WegoMessage.query()
           .where('order_id', conversationId)
@@ -844,7 +940,7 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
           unreadCount: Number(unreadCount?.$extras.total) || 0,
           createdAt: message.createdAt.toISO(),
           type: 'order',
-          messageType: 'wego'
+          messageType: 'order'
         })
       }
     }

@@ -49,6 +49,7 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   Route.post('/users/:id/fcm-token', 'UsersController.updateFcmToken')
   Route.get('/ratings/me', 'RatingsController.getUserRatings').middleware('auth')
   Route.post('/users/check-active-promos', 'UsersController.checkActivePromos').middleware('auth')
+   Route.patch('/user/check-active-promos/:id', 'UsersController.checkActivePromosUser')
   // Route.get('/drivers/available', 'UsersController.availableDrivers')
   Route.get('/users/export', 'UsersController.export')
   Route.get('user/:id/transactions', 'TransactionsController.getUserTransactions')
@@ -57,7 +58,7 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   Route.get("/drivers/available" , 'UsersController.getDriver')
     // Récupérer la promo active d'un utilisateur spécifique
     Route.get('/users/:id/rides-stats', 'RidesController.getUserRidesStats').middleware('auth');
-    Route.get('/:id/active-promo', 'UsersController.getActivePromo')
+    Route.get('users/:id/active-promo', 'UsersController.getActivePromo')
   Route.post('/refresh/:id', 'AuthControllers.refresh')
   Route.post('/forgot-password', 'AuthControllers.forgotPassword')
   Route.post('/reset-password', 'AuthControllers.resetPassword')
@@ -89,6 +90,10 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   Route.delete("dishes/:id", "RestaurantsController.deleteDish")
   Route.patch("dishes/:id", "RestaurantsController.updateDish")
   Route.get('/drivers/:id/ratings', 'RidesController.getDriverRatings')
+  // start/routes.ts
+Route.post('/conversations/:id/messages/presigned', 'UsersController.getPresignedUrl')
+
+
 }).prefix('/api/v1')
 
 
@@ -103,6 +108,7 @@ Route.group(() => {
   Route.post('/rides/:rideId/messages', 'MessagesController.storee')
   Route.post('/orders/:order_id/messages', 'MessagesController.createMessageOrder')
   Route.patch('/rides/:rideId/messages/read', 'MessagesController.markMessagesAsRead')
+    Route.patch('/orders/:rideId/messages/read', 'MessagesController.markMessagesAsReadOrder')
 }).prefix('/api/v1').middleware('auth')
 
 
@@ -143,7 +149,9 @@ Route.post('/notifications/token', 'UsersController.store').middleware('auth');
     Route.get('/orders/current', 'OrdersController.current')
     Route.patch('/orders/:id/cancel', 'OrdersController.cancel')
     Route.patch("orders/:id" ,'OrdersController.update')
-    
+    // start/routes.ts
+Route.get('/orders/:id/driver-location', 'OrdersController.getDriverLocation').middleware('auth');
+Route.post('/orders/:id/driver-location', 'OrdersController.storeDriver').middleware('auth');
   })
   // .middleware('auth:api')
   // .middleware(['auth', 'deliveryMan'])
