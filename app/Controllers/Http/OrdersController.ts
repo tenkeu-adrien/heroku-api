@@ -21,7 +21,8 @@ export default class OrdersController {
       items: schema.array().members(
         schema.object().members({
           dishId: schema.number(),
-          quantity: schema.number()
+          quantity: schema.number(),
+          deliveryPrice:schema.number()
         })
       )
     })
@@ -45,8 +46,8 @@ export default class OrdersController {
 
       for (const item of payload.items) {
         const dish = await Dish.findOrFail(item.dishId, { client: trx })
-        const itemTotal = dish.price * item.quantity
-
+        let itemTotal = dish.price * item.quantity 
+        itemTotal = itemTotal + item.deliveryPrice
         await OrderItem.create({
           orderId: order.id,
           dishId: dish.id,

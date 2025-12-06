@@ -42,9 +42,11 @@ export default class RatingsController {
 
   public async storee({ request, response, auth }: HttpContextContract) {
     const user = auth.user!
+
+    console.log("request" ,request.body())
     const validationSchema = schema.create({
       ride_id: schema.number([
-        rules.exists({ table: 'rides', column: 'id' })
+        rules.exists({ table: 'orders', column: 'id' })
       ]),
       rating: schema.number([
         rules.range(0, 5)
@@ -59,11 +61,12 @@ export default class RatingsController {
       }
     })
 
+    console.log("data dans ratings" ,data)
     const order = await Order.findOrFail(data.ride_id)
     // const user = auth.user!
 
     const rating = await Rating.create({
-      userId: order.driverId,
+      userId: order.clientId,
       rating: data.rating,
       comment: data.comment,
     })

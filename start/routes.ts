@@ -141,7 +141,7 @@ Route.post('/drivers/available-notify', 'RidesController.notifyAvailableDrivers'
 Route.patch('/notify/:id', 'RidesController.notify')
 
 // start/routes.ts
-Route.post('/notifications/token', 'UsersController.store').middleware('auth');
+Route.post('/notifications/token/', 'UsersController.store').middleware('auth');
 
     Route.get('/rides/revenue-stats', 'RidesController.revenueStats');
     Route.get('/rides/payment-distribution', 'RidesController.paymentDistribution');
