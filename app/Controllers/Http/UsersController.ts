@@ -7,9 +7,8 @@ import PromoCode from 'App/Models/PromoCode'
 import { DateTime } from 'luxon'
 import ExcelJS from 'exceljs'
 import PushToken from 'App/Models/PushToken'
+import Rating from 'App/Models/Rating';
 // import S3 from '@aws-sdk/client-S3'
-import { v4 as uuidv4 } from 'uuid'
-import Env from '@ioc:Adonis/Core/Env'
 
 // const s3 = new S3({
 //   accessKeyId: Env.get('S3_KEY'),
@@ -264,6 +263,88 @@ export default class UsersController {
     await user.save()
 
     return response.ok(user)
+}
+
+
+public async updateAvatar({ auth, request, response }: HttpContextContract) {
+  try {
+    const user = auth.user!
+    const avatarUrl = request.input('avatar')
+const  users = await User.findBy('id' , user.id)
+console.log("users" , avatarUrl) 
+    if (!avatarUrl) {
+      return response.json({ success: false, message: 'URL de l’avatar manquante.' })
+    }
+
+    users!.avatar = avatarUrl
+users!.save()
+    return response.ok({
+      success: true,
+      message: 'Avatar mis à jour avec succès.',
+      avatar: user.avatar,
+    })
+  } catch (error) {
+    console.error('❌ Erreur mise à jour avatar:', error)
+    return response.internalServerError({
+      success: false,
+      message: 'Erreur serveur lors de la mise à jour de l’avatar.',
+    })
+  }
+}
+
+public async getDriverById({ params, response }: HttpContextContract) {
+  console.log("params.id", params.id);
+
+  try {
+    const driverId = params.id;
+
+    // 1. Récupérer le driver
+    const driver = await User.query()
+      .where('id', driverId)
+      .andWhere('role', 'driver')
+      .first();
+
+    if (!driver) {
+      return response.notFound({
+        success: false,
+        message: 'Chauffeur non trouvé avec cet ID.',
+      });
+    }
+
+    // 2. Récupérer les ratings du driver
+    const ratings = await Rating.query()
+      .where("user_id", driverId)
+      .orderBy('created_at', 'desc');
+console.log("ratings dans usercontroller" ,ratings)
+    // 3. Préparer la réponse des ratings
+    let ratingsResponse ;
+    
+    if (ratings.length>0) {
+      // Calculer la moyenne si des ratings existent
+      console.log("calcule")
+      const averageRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+      
+      ratingsResponse = {
+        list: ratings,
+        count: ratings.length,
+        average: Number(averageRating.toFixed(1)),
+      };
+    }
+
+    console.log("ratingsResponse", ratingsResponse);
+    // 4. Réponse finale
+    return response.ok({
+      success: true,
+      driver,
+      ratings: ratingsResponse, // null si aucun rating
+    });
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération du chauffeur par ID :', error);
+    return response.internalServerError({
+      success: false,
+      message: 'Erreur serveur lors de la récupération du chauffeur.',
+    });
+  }
 }
 
   public async destroy({ params, response }: HttpContextContract) {
@@ -541,7 +622,7 @@ async getActivePromo({ params, response }) {
 
 
 
-public async store({ auth, request }: HttpContextContract) {
+public async store({ auth, request ,response}: HttpContextContract) {
   const token = request.input('token')
   const user = auth.user!
 
@@ -555,8 +636,8 @@ public async store({ auth, request }: HttpContextContract) {
     if (existingToken) {
       existingToken.token = token
       await existingToken.save()
-      console.log("existingToken" , existingToken)
-      return { success: true, message: 'Token updated' }
+      console.log("existingToken true")
+      return   response.json({ success: true, message: 'Token updated' })
     }
 
     // Même chose ici : la clé étrangère s'appelle user_id
@@ -565,11 +646,11 @@ public async store({ auth, request }: HttpContextContract) {
       token,
     })
 console.log("new token created")
-    return { success: true, message: 'Token saved' }
+    return response.json({ success: true, message: 'Token saved' })
   } catch (error) {
     // En production, ne renvoie jamais l'erreur brute au front
     console.error('PushToken store error:', error)
-    return { success: false, message: 'Failed to save token' }
+    return response.json({ success: false, message: 'Failed to save token' })
   }
 }
 

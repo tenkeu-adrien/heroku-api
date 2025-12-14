@@ -55,7 +55,7 @@ Route.get('/finance/stats', 'UsersController.getFinancialStats');
   Route.get('user/:id/transactions', 'TransactionsController.getUserTransactions')
   Route.get('drivers/:id/stats', 'StatsController.index')
   Route.get('/users/:id/completed-rides', 'RideController.getUserCompletedRides');
-  Route.get("/drivers/available" , 'UsersController.getDriver')
+  Route.patch("/profile/avatar" , 'UsersController.updateAvatar').middleware('auth')
     // Récupérer la promo active d'un utilisateur spécifique
     Route.get('/users/:id/rides-stats', 'RidesController.getUserRidesStats').middleware('auth');
     Route.get('users/:id/active-promo', 'UsersController.getActivePromo')
@@ -105,6 +105,7 @@ Route.group(() => {
   Route.post('/messages', 'MessagesController.store')
 
   Route.get('/rides/:rideId/messages', 'MessagesController.indexx')
+   Route.get('/drivers/:id', 'UsersController.getDriverById').middleware('auth')
   Route.post('/rides/:rideId/messages', 'MessagesController.storee')
   Route.post('/orders/:order_id/messages', 'MessagesController.createMessageOrder')
   Route.patch('/rides/:rideId/messages/read', 'MessagesController.markMessagesAsRead')

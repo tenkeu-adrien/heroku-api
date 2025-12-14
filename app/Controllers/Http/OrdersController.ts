@@ -359,7 +359,7 @@ public async showw({ params, response }: HttpContextContract) {
 
 
   public async getDriverLocation({ params, response}: HttpContextContract) {
-console.log("je suis dans getDriverLocation" ,params.id)
+// console.log("je suis dans getDriverLocation" ,params.id)
 
   // Si tu stockes la dernière position connue dans la table Order ou DriverLocation
   const lastLocation = await Database.from('driver_positions')

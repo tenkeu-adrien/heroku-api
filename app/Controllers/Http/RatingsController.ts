@@ -66,9 +66,10 @@ export default class RatingsController {
     // const user = auth.user!
 
     const rating = await Rating.create({
-      userId: order.clientId,
+      userId: order.driverId,
       rating: data.rating,
       comment: data.comment,
+      rideId:data.ride_id
     })
 
     return response.created(rating)

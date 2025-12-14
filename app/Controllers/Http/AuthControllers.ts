@@ -334,7 +334,7 @@ console.log("token" ,token)
   public async refresh({ response, params }: HttpContextContract) {
     try {
       const { id } = params;
-      
+      console.log("id user pour refresh" ,id)
       // 1. Trouver l'utilisateur avec vérification de is_deleted
       const user = await User.findOrFail(id);
       
@@ -349,10 +349,11 @@ console.log("token" ,token)
       // const token = await auth.use('api').generate(user);
       
       // console.log("token", token);
-  
+  console.log("user" ,user)
       return response.ok({
         user: user,
         // token: token.token,
+        message:"succes"
       });
       
     } catch (error) {

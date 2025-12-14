@@ -7,7 +7,7 @@ export default class NotificationService {
     // console.log("Sending notification to user:", userId, title, body, data);
     const pushToken = await PushToken.query().where('user_id', userId).first();
     if (!pushToken){
-      console.log("No push token found for user:", userId);
+      // console.log("No push token found for user:", userId);
       return;
     } 
     await axios.post('https://exp.host/--/api/v2/push/send', {
@@ -22,7 +22,7 @@ export default class NotificationService {
   }
 
 static async sendToDrivers(title: string, body: string, data = {}) {
-  console.log("data vehicle type", data.vehicleType);
+  // console.log("data vehicle type", data.vehicleType);
 
   const tokens = await PushToken.query()
     .preload('user')

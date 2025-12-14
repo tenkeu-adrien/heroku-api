@@ -268,45 +268,116 @@ public async markMessagesAsReadOrder({ auth, params, response }: HttpContextCont
   //   })
   // }
 
-  public async indexx({ auth, params, request, response }: HttpContextContract) {
+//   public async indexx({ auth, params, request, response }: HttpContextContract) {
+//   const user = auth.user!
+//   const rideId = params.rideId
+//   const { type} = request.qs() // Nouveau paramètre pour le type
+//   const page = request.input('page', 1)
+//   const limit = 20
+// console.log("type" ,type)
+// // console.log("user dans indexx" ,rideId ,user)
+//   // Déterminer la table de messages à utiliser
+//   const messageTable = type === 'order' ? 'wego_messages' : 'messages'
+//   const idField = type === 'order' ? 'order_id' : 'ride_id'
+
+//   // Vérifier que l'utilisateur a accès à cette conversation
+//   let hasAccess = false
+  
+//   if (type == 'ride' || type == undefined) {
+//     // console.log("je suis dans ride" ,rideId)
+//     const rideAccess = await Database.from('rides')
+//       .select('id')
+//       .where('id', rideId)
+//       .andWhere(q => {
+//         q.where('client_id', user.id)
+//          .orWhere('driver_id', user.id)
+//       })
+//       .first()
+//     hasAccess = !!rideAccess
+
+//     console.log("rideAcceess" ,rideAccess)
+//   } else {
+//     const orderAccess = await Database.from('orders')
+//       .select('id')
+//       .where('id', rideId)
+//       .andWhere(q => {
+//         q.where('client_id', user.id)
+//          .orWhere('driver_id', user.id)
+//       })
+//       .first()
+//       console.log("orderAccess dans " ,orderAccess)
+//     hasAccess = !!orderAccess
+//   }
+
+//   if (!hasAccess) {
+//     return response.unauthorized({
+//       success: false,
+//       message: 'Accès non autorisé à cette conversation'
+//     })
+//   }
+
+//   // Récupérer les messages paginés depuis la table appropriée
+//   const messages = await Database.from(messageTable)
+//     .where(idField, rideId)
+//     .orderBy('created_at', 'asc')
+//     .paginate(page, limit)
+
+//   // Formater la réponse
+//   const formattedMessages = messages.all().map(msg => ({
+//     id: msg.id,
+//     text: msg.content,
+//     sender: msg.sender_id === user.id ? 'user' : 'contact',
+//     time: msg.created_at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+//     isRead: msg.is_read,
+//     createdAt: msg.created_at
+//   }))
+
+//   return response.json({
+//     success: true,
+//     data: {
+//       messages: formattedMessages,
+//       meta: messages.getMeta(),
+//       type: type // Retourner le type pour information
+//     }
+//   })
+// }
+
+
+public async indexx({ auth, params, request, response }: HttpContextContract) {
   const user = auth.user!
   const rideId = params.rideId
-  const { type} = request.qs() // Nouveau paramètre pour le type
+  const { type } = request.qs()
   const page = request.input('page', 1)
   const limit = 20
-console.log("type" ,type)
-// console.log("user dans indexx" ,rideId ,user)
-  // Déterminer la table de messages à utiliser
+
+  // console.log("type", type)
+
   const messageTable = type === 'order' ? 'wego_messages' : 'messages'
   const idField = type === 'order' ? 'order_id' : 'ride_id'
 
-  // Vérifier que l'utilisateur a accès à cette conversation
   let hasAccess = false
-  
-  if (type == 'ride' || type == undefined) {
-    // console.log("je suis dans ride" ,rideId)
-    const rideAccess = await Database.from('rides')
-      .select('id')
-      .where('id', rideId)
-      .andWhere(q => {
-        q.where('client_id', user.id)
-         .orWhere('driver_id', user.id)
-      })
-      .first()
-    hasAccess = !!rideAccess
+  let contactId = rideId
 
-    console.log("rideAcceess" ,rideAccess)
-  } else {
+  if (type === 'order') {
     const orderAccess = await Database.from('orders')
-      .select('id')
+      .select('id', 'client_id', 'driver_id')
       .where('id', rideId)
       .andWhere(q => {
-        q.where('client_id', user.id)
-         .orWhere('driver_id', user.id)
+        q.where('client_id', user.id).orWhere('driver_id', user.id)
       })
       .first()
-      console.log("orderAccess dans " ,orderAccess)
+
     hasAccess = !!orderAccess
+  } else {
+    const rideAccess = await Database.from('rides')
+      .select('id', 'client_id', 'driver_id')
+      .where('id', rideId)
+      .andWhere(q => {
+        q.where('client_id', user.id).orWhere('driver_id', user.id)
+      })
+      .first()
+
+    hasAccess = !!rideAccess
   }
 
   if (!hasAccess) {
@@ -316,33 +387,65 @@ console.log("type" ,type)
     })
   }
 
-  // Récupérer les messages paginés depuis la table appropriée
+  // Récupérer les messages paginés
   const messages = await Database.from(messageTable)
     .where(idField, rideId)
     .orderBy('created_at', 'asc')
     .paginate(page, limit)
 
-  // Formater la réponse
+  // Déterminer l'interlocuteur (le contact avec qui on discute)
+  let contact = null
+
+  if (type === 'order') {
+    const order = await Database.from('orders')
+      .select('client_id', 'driver_id')
+      .where('id', rideId)
+      .first()
+
+    const contactId = order.client_id == user.id ? order.driver_id : order.client_id
+    contact = await Database.from('users')
+      .select('id', 'first_name', 'avatar')
+      .where('id', contactId)
+      .first()
+  } else {
+    const ride = await Database.from('rides')
+      .select('client_id', 'driver_id')
+      .where('id', rideId)
+      .first()
+
+    const contactId = ride.client_id == user.id ? ride.driver_id : ride.client_id
+    contact = await Database.from('users')
+      .select('id', 'first_name', 'avatar')
+      .where('id', contactId)
+      .first()
+  }
+
+  // Formater les messages
   const formattedMessages = messages.all().map(msg => ({
     id: msg.id,
     text: msg.content,
-    sender: msg.sender_id === user.id ? 'user' : 'contact',
+    sender: msg.sender_id == user.id ? 'user' : 'contact',
     time: msg.created_at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     isRead: msg.is_read,
     createdAt: msg.created_at
   }))
 
+  // Retour avec contactInfo ajouté
+  // console.log("contact",contact)
+//  100% conforme à ta demande
   return response.json({
     success: true,
     data: {
       messages: formattedMessages,
       meta: messages.getMeta(),
-      type: type // Retourner le type pour information
+      type: type,
+      contactInfo: contact ? {
+        firstname: `${contact.first_name}`.trim(),
+        photo: contact.jointe || null
+      } : null
     }
   })
 }
-
-
 //   public async storee({ auth, params, request, response }: HttpContextContract) {
 //   const user = auth.user!
 //   const rideId = params.rideId
@@ -439,10 +542,10 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
   const content = request.input('content')
   const orderId = request.input('orderId') // Nouveau paramètre pour WeGo
 
-
+console.log("content" ,content  ,orderId)
   // console.log(" log dans store content rideId ",content ,rideId)
   // console.log("user",user)
-  if (!content || content.trim().length === 0) {
+  if (!content || content.trim().length == 0) {
     return response.badRequest({
       success: false,
       message: 'Le contenu du message ne peut pas être vide'
@@ -457,10 +560,10 @@ public async storee({ auth, params, request, response }: HttpContextContract) {
     // console.log("je suis dans order" ,orderId)
     const order = await Database.from('orders')
       .where('id', rideId)
-      .andWhereIn('status', ['preparing', 'delivering', 'completed'])
+      .andWhereIn('status', ['preparing', 'delivering', 'completed' ,'delivered'])
       .first()
 
-      console.log("rder",order)
+      console.log("order trouver",order)
     if (!order) {
       return response.badRequest({
         success: false,
@@ -689,7 +792,7 @@ await NotificationService.sendToUser(
       content,
       createdAt: message.createdAt,
       isRead: false,
-      sender: user.id === message.senderId ? 'user' : 'contact'
+      sender: user.id == message.senderId ? 'user' : 'contact'
     }
   
     io.to(`ride_${rideId}`).emit('ride:message', messageData)
