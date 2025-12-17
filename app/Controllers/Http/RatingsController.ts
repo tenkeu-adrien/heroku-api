@@ -40,6 +40,50 @@ export default class RatingsController {
   }
 
 
+
+  public async store({ request, response, auth }: HttpContextContract) {
+  const user = auth.user!
+  const validationSchema = schema.create({
+    ride_id: schema.number([
+      rules.exists({ table: 'rides', column: 'id' })
+    ]),
+    rating: schema.number([
+      rules.range(0, 5)
+    ]),
+    comment: schema.string.optional({ trim: true }),
+  })
+
+  const data = await request.validate({
+    schema: validationSchema,
+    messages: {
+      'rating.range': 'La note doit être entre 0 et 5'
+    }
+  })
+
+  const ride = await Ride.findOrFail(data.ride_id)
+  // const user = auth.user!
+
+  // VÉRIFICATION: Empêcher la double notation du même driver pour la même ride
+  const existingRating = await Rating.query()
+    .where('user_id', ride.driverId)  // Le driver à noter
+    .where('ride_id', data.ride_id)   // La ride spécifique
+    .first()
+  
+  if (existingRating) {
+    return response.status(409).send({
+      message: 'Ce chauffeur a déjà été noté pour cette ride'
+    })
+  }
+
+  const rating = await Rating.create({
+    userId: ride.driverId,
+    rating: data.rating,
+    comment: data.comment,
+  })
+
+  return response.created(rating)
+}
+
   public async storee({ request, response, auth }: HttpContextContract) {
     const user = auth.user!
 
@@ -61,8 +105,19 @@ export default class RatingsController {
       }
     })
 
-    console.log("data dans ratings" ,data)
+    // console.log("data dans ratings" ,data)
     const order = await Order.findOrFail(data.ride_id)
+
+    const existingRating = await Rating.query()
+    .where('user_id', order.driverId)  // Le driver à noter
+    .where('ride_id', data.ride_id)   // La ride spécifique
+    .first()
+  
+  if (existingRating) {
+    return response.status(409).send({
+      message: 'Ce chauffeur a déjà été noté pour cette ride'
+    })
+  }
     // const user = auth.user!
 
     const rating = await Rating.create({
